@@ -1,6 +1,8 @@
 import { Outlet } from 'react-router-dom';
 import Navbar from '../components/navigation/Navbar';
 import Footer from '../components/navigation/Footer';
+import AddReviewModal from '../components/modals/AddReviewModal';
+import AddToListModal from '../components/modals/AddToListModal';
 
 /**
  * AppLayout — Layout principal de la aplicación.
@@ -15,6 +17,10 @@ export default function AppLayout() {
                 <Outlet />
             </main>
             <Footer />
+
+            {/* Modales globales de la aplicación */}
+            <AddReviewModal />
+            <AddToListModal />
         </div>
     );
 }

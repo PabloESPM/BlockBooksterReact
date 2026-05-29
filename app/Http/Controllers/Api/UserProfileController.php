@@ -70,7 +70,10 @@ class UserProfileController extends Controller
         $status = $request->input('status', 'read');
         $books = $user->books()
             ->where('status', $status)
-            ->with('book.authors')
+            ->with(['book' => function ($q) {
+                $q->withAvg('users as average_rating', 'book_user.rating')
+                  ->withCount('reviews');
+            }, 'book.authors'])
             ->paginate(6);
 
         // Transformar BookUser -> Book con datos de estado

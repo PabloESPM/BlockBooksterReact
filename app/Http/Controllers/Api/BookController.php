@@ -112,6 +112,8 @@ class BookController extends Controller
     public function show(Request $request, Book $book): JsonResponse
     {
         $book->load(['authors', 'genre', 'language', 'purchases']);
+        $book->loadAvg('users as average_rating', 'book_user.rating');
+        $book->loadCount('reviews');
 
         // Reseñas paginadas con likes
         $reviews = $book->reviews()
@@ -142,6 +144,27 @@ class BookController extends Controller
         // Añadimos el estado del usuario al recurso
         $book->user_book_status = $userBook;
 
+        // Autores y libros relacionados del mismo género
+        $relatedAuthors = collect();
+        $relatedBooks = collect();
+        if ($book->genre_id) {
+            $authorIds = $book->authors->pluck('id');
+            $relatedAuthors = \App\Models\Author::whereHas('books', function ($q) use ($book) {
+                $q->where('genre_id', $book->genre_id);
+            })
+            ->whereNotIn('id', $authorIds)
+            ->inRandomOrder()
+            ->take(3)
+            ->get();
+
+            $relatedBooks = \App\Models\Book::with('authors')
+                ->where('genre_id', $book->genre_id)
+                ->where('isbn', '!=', $book->isbn)
+                ->inRandomOrder()
+                ->take(4)
+                ->get();
+        }
+
         return response()->json([
             'data' => new BookResource($book),
             'reviews' => [
@@ -152,6 +175,41 @@ class BookController extends Controller
                     'per_page' => $reviews->perPage(),
                     'total' => $reviews->total(),
                 ],
+            ],
+            'related_authors' => \App\Http\Resources\AuthorResource::collection($relatedAuthors),
+            'related_books' => BookResource::collection($relatedBooks),
+        ]);
+    }
+
+    /**
+     * Actualiza el estado de lectura del usuario autenticado para un libro.
+     */
+    public function updateStatus(Request $request, Book $book): JsonResponse
+    {
+        $request->validate([
+            'status' => 'required|in:pending,reading,read',
+        ]);
+
+        $status = $request->status;
+
+        BookUser::updateOrCreate(
+            [
+                'user_id'   => $request->user()->id,
+                'book_isbn' => $book->isbn,
+            ],
+            [
+                'status'     => $status,
+                'started_at' => $status === 'reading' ? now() : null,
+                'finished_at'=> $status === 'read'    ? now() : null,
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Estado de lectura actualizado correctamente.',
+            'user_book' => [
+                'status' => $status,
+                'started_at' => $status === 'reading' ? now()->toISOString() : null,
+                'finished_at' => $status === 'read' ? now()->toISOString() : null,
             ],
         ]);
     }

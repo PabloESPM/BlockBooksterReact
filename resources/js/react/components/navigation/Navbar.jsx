@@ -16,12 +16,17 @@ export default function Navbar() {
     const [showSearch, setShowSearch] = useState(false);
     const searchRef = useRef(null);
     const debounceRef = useRef(null);
+    const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const userMenuRef = useRef(null);
 
-    // Cerrar buscador al hacer clic fuera
+    // Cerrar buscador y menú de usuario al hacer clic fuera
     useEffect(() => {
         const handler = (e) => {
             if (searchRef.current && !searchRef.current.contains(e.target)) {
                 setShowSearch(false);
+            }
+            if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+                setUserMenuOpen(false);
             }
         };
         document.addEventListener('mousedown', handler);
@@ -168,38 +173,112 @@ export default function Navbar() {
                     {/* Acciones de usuario */}
                     <div className="hidden md:flex items-center gap-2">
                         {isAuthenticated ? (
-                            <>
-                                {isAdmin && (
-                                    <Link to="/admin" className="text-xs font-bold uppercase px-3 py-1.5 bg-red-600 text-white border-2 border-black hover:bg-red-700">
-                                        Admin
-                                    </Link>
+                            <div ref={userMenuRef} className="ml-3 relative">
+                                <div>
+                                    <button
+                                        onClick={() => setUserMenuOpen(!userMenuOpen)}
+                                        type="button"
+                                        className="bg-white border-2 border-black p-1 flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] cursor-pointer"
+                                        id="user-menu-button"
+                                    >
+                                        <span className="sr-only">Abrir menú de usuario</span>
+                                        <img
+                                            className="h-8 w-8 object-cover border border-black"
+                                            src={avatarUrl}
+                                            alt={`Avatar de ${user?.name || 'Usuario'}`}
+                                            onError={(e) => {
+                                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'U')}&size=80&background=FFA903&color=000&bold=true`;
+                                            }}
+                                        />
+                                    </button>
+                                </div>
+
+                                {userMenuOpen && (
+                                    <div
+                                        className="origin-top-right absolute right-0 mt-2 w-48 bg-white border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] py-1 focus:outline-none z-50 transform transition-all"
+                                        role="menu"
+                                    >
+                                        {(user?.type === 'admin' || user?.type === 'worker') && (
+                                            <Link
+                                                to="/admin"
+                                                onClick={() => setUserMenuOpen(false)}
+                                                className="block px-4 py-2 text-sm text-brand-blue font-black hover:bg-brand-yellow border-b border-gray-100"
+                                                role="menuitem"
+                                            >
+                                                PANEL ADMIN
+                                            </Link>
+                                        )}
+                                        <Link
+                                            to="/dashboard"
+                                            onClick={() => setUserMenuOpen(false)}
+                                            className="block px-4 py-2 text-sm text-black font-bold hover:bg-brand-yellow border-b border-gray-100"
+                                            role="menuitem"
+                                        >
+                                            PERFIL
+                                        </Link>
+                                        <Link
+                                            to="/dashboard/social"
+                                            onClick={() => setUserMenuOpen(false)}
+                                            className="block px-4 py-2 text-sm text-black font-bold hover:bg-brand-yellow border-b border-gray-100"
+                                            role="menuitem"
+                                        >
+                                            SOCIAL
+                                        </Link>
+                                        <Link
+                                            to="/dashboard/lists"
+                                            onClick={() => setUserMenuOpen(false)}
+                                            className="block px-4 py-2 text-sm text-black font-bold hover:bg-brand-yellow border-b border-gray-100"
+                                            role="menuitem"
+                                        >
+                                            MIS LISTAS
+                                        </Link>
+                                        <Link
+                                            to="/dashboard/reviews"
+                                            onClick={() => setUserMenuOpen(false)}
+                                            className="block px-4 py-2 text-sm text-black font-bold hover:bg-brand-yellow border-b border-gray-100"
+                                            role="menuitem"
+                                        >
+                                            MIS RESEÑAS
+                                        </Link>
+                                        <Link
+                                            to="/dashboard/settings"
+                                            onClick={() => setUserMenuOpen(false)}
+                                            className="block px-4 py-2 text-sm text-black font-bold hover:bg-brand-yellow"
+                                            role="menuitem"
+                                        >
+                                            AJUSTES
+                                        </Link>
+
+                                        <div className="border-t-2 border-black my-1"></div>
+
+                                        <button
+                                            onClick={() => {
+                                                setUserMenuOpen(false);
+                                                handleLogout();
+                                            }}
+                                            className="block w-full text-left px-4 py-2 text-sm text-black font-bold hover:bg-red-500 hover:text-white cursor-pointer"
+                                            role="menuitem"
+                                        >
+                                            CERRAR SESIÓN
+                                        </button>
+                                    </div>
                                 )}
-                                <Link to="/dashboard" className="flex items-center gap-2">
-                                    <img 
-                                        src={avatarUrl} 
-                                        alt="" 
-                                        className="w-8 h-8 border-2 border-black object-cover" 
-                                        onError={(e) => {
-                                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'U')}&size=80&background=FFA903&color=000&bold=true`;
-                                        }}
-                                    />
-                                </Link>
-                                <button
-                                    onClick={handleLogout}
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3">
+                                <Link
+                                    to="/login"
                                     className="text-xs font-bold uppercase px-3 py-1.5 bg-white text-black border-2 border-black hover:bg-gray-100"
                                 >
-                                    Salir
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <Link to="/login" className="text-xs font-bold uppercase px-3 py-1.5 bg-white text-black border-2 border-black hover:bg-gray-100">
-                                    Entrar
+                                    INICIA SESIÓN
                                 </Link>
-                                <Link to="/register" className="text-xs font-bold uppercase px-3 py-1.5 bg-brand-yellow text-black border-2 border-black hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                                    Registrarse
+                                <Link
+                                    to="/register"
+                                    className="text-xs font-bold uppercase px-3 py-1.5 bg-brand-yellow text-black border-2 border-black hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                                >
+                                    REGÍSTRATE
                                 </Link>
-                            </>
+                            </div>
                         )}
                     </div>
 

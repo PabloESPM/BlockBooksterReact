@@ -100,6 +100,97 @@ class MediumIssuesTest extends TestCase
     }
 
     /**
+     * Test for updating book status.
+     */
+    public function test_book_status_update(): void
+    {
+        $user = $this->crearUsuario();
+        Sanctum::actingAs($user);
+
+        $language = \App\Models\Language::create(['code' => 'es', 'name' => 'Spanish']);
+        $genre = \App\Models\Genre::create(['name' => 'Ficción']);
+        $book = Book::factory()->create([
+            'language_id' => $language->id,
+            'genre_id' => $genre->id,
+        ]);
+
+        $response = $this->postJson("/api/books/{$book->isbn}/status", [
+            'status' => 'reading',
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertDatabaseHas('book_user', [
+            'user_id' => $user->id,
+            'book_isbn' => $book->isbn,
+            'status' => 'reading',
+        ]);
+    }
+
+    /**
+     * Test user profile books and stats.
+     */
+    public function test_user_profile_books_and_stats(): void
+    {
+        $user = $this->crearUsuario();
+        Sanctum::actingAs($user);
+
+        $language = \App\Models\Language::create(['code' => 'es', 'name' => 'Spanish']);
+        $genre = \App\Models\Genre::create(['name' => 'Ficción']);
+        $book = Book::factory()->create([
+            'language_id' => $language->id,
+            'genre_id' => $genre->id,
+        ]);
+
+        // Mark book as reading
+        BookUser::create([
+            'user_id' => $user->id,
+            'book_isbn' => $book->isbn,
+            'status' => 'reading',
+        ]);
+
+        // Get user profile stats
+        $response = $this->getJson("/api/users/{$user->id}");
+        $response->assertStatus(200);
+        $this->assertEquals(1, $response->json('book_stats.reading'));
+        $this->assertEquals(0, $response->json('book_stats.read'));
+
+        // Get user books tab data
+        $booksResponse = $this->getJson("/api/users/{$user->id}/books?status=reading");
+        $booksResponse->assertStatus(200);
+        $this->assertCount(1, $booksResponse->json('data'));
+        $this->assertEquals($book->isbn, $booksResponse->json('data.0.isbn'));
+    }
+
+    /**
+     * Test book average rating and reviews count calculation.
+     */
+    public function test_book_average_rating(): void
+    {
+        $user1 = $this->crearUsuario();
+        $user2 = $this->crearUsuario();
+
+        $language = \App\Models\Language::create(['code' => 'es', 'name' => 'Spanish']);
+        $genre = \App\Models\Genre::create(['name' => 'Ficción']);
+        $book = Book::factory()->create([
+            'language_id' => $language->id,
+            'genre_id' => $genre->id,
+        ]);
+
+        // Add ratings
+        BookUser::create(['user_id' => $user1->id, 'book_isbn' => $book->isbn, 'rating' => 5, 'status' => 'read']);
+        BookUser::create(['user_id' => $user2->id, 'book_isbn' => $book->isbn, 'rating' => 3, 'status' => 'read']);
+
+        // Add reviews to match reviews_count
+        Review::create(['user_id' => $user1->id, 'book_isbn' => $book->isbn, 'title' => 'Good', 'body' => 'Yes']);
+        Review::create(['user_id' => $user2->id, 'book_isbn' => $book->isbn, 'title' => 'Average', 'body' => 'Ok']);
+
+        $response = $this->getJson("/api/books/{$book->isbn}");
+        $response->assertStatus(200);
+        $this->assertEquals(4.0, $response->json('data.average_rating'));
+        $this->assertEquals(2, $response->json('data.reviews_count'));
+    }
+
+    /**
      * Test for Issue 2: Guardar foto de autor en Admin actualiza photo_url.
      */
     public function test_admin_author_save_saves_photo_url_correctly(): void

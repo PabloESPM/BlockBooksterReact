@@ -42,6 +42,7 @@ export default function DashboardReviewsPage() {
                             key={review.id}
                             review={review}
                             showBook={true}
+                            showActions={true}
                             onDelete={handleDelete}
                         />
                     ))}

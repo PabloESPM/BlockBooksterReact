@@ -26,6 +26,7 @@ class DashboardController extends Controller
             'stats' => [
                 'read_books' => $user->books()->where('status', 'read')->count(),
                 'reading_books' => $user->books()->where('status', 'reading')->count(),
+                'pending_books' => $user->books()->where('status', 'pending')->count(),
                 'lists' => $user->lists()->count(),
                 'reviews' => $user->reviews()->count(),
                 'followers' => $user->followers()->count(),

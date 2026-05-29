@@ -78,15 +78,12 @@ export default function DashboardListsPage() {
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {lists.map((list) => (
-                        <div key={list.id} className="relative">
-                            <ListCard list={list} />
-                            <button
-                                onClick={() => handleDelete(list.id)}
-                                className="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold uppercase px-2 py-1 border-2 border-black"
-                            >
-                                ✕
-                            </button>
-                        </div>
+                        <ListCard 
+                            key={list.id} 
+                            list={list} 
+                            dashboard={true} 
+                            onDelete={handleDelete} 
+                        />
                     ))}
                 </div>
             )}

@@ -110,6 +110,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/users/{user}/follow', [FollowController::class, 'toggleUser']);
     Route::post('/authors/{author}/follow', [FollowController::class, 'toggleAuthor']);
     Route::post('/lists/{list}/follow', [FollowController::class, 'toggleList']);
+    Route::post('/books/{book}/status', [BookController::class, 'updateStatus']);
 
     // ── Reseñas ──
     Route::post('/reviews', [ReviewController::class, 'store']);
