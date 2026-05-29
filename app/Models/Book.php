@@ -68,7 +68,14 @@ class Book extends Model
     public function getCoverImageAttribute(): ?string
     {
         if ($this->cover_path) {
-            return \Illuminate\Support\Facades\Storage::url($this->cover_path);
+            if (str_starts_with($this->cover_path, 'http://') || str_starts_with($this->cover_path, 'https://')) {
+                return $this->cover_path;
+            }
+            $cleanPath = ltrim($this->cover_path, '/');
+            if (str_starts_with($cleanPath, 'storage/')) {
+                $cleanPath = substr($cleanPath, 8);
+            }
+            return \Illuminate\Support\Facades\Storage::disk('public')->url($cleanPath);
         }
 
         return null;
@@ -82,6 +89,24 @@ class Book extends Model
     public function getCoverAttribute(): ?string
     {
         return $this->cover_image;
+    }
+
+    /**
+     * Ciclo de vida y eventos del modelo Book.
+     */
+    protected static function booted(): void
+    {
+        // Limpiar el archivo físico de la portada al eliminar un libro
+        static::deleting(function (Book $book) {
+            if ($book->cover_path) {
+                $disco = \Illuminate\Support\Facades\Storage::disk('public');
+                $disco->delete($book->cover_path);
+                $carpeta = dirname($book->cover_path);
+                if ($disco->exists($carpeta) && count($disco->files($carpeta)) === 0) {
+                    $disco->deleteDirectory($carpeta);
+                }
+            }
+        });
     }
 }
 

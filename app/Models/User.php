@@ -23,14 +23,12 @@ class User extends Authenticatable
         'date_of_birth',
         'gender',
         'country_id',
-        'type',
         'avatar',
         'profile_visibility',
         'bio',
         'location',
         'website',
         'twitter',
-        'is_blocked',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -52,7 +50,14 @@ class User extends Authenticatable
     public function getAvatarUrlAttribute(): string
     {
         if ($this->avatar) {
-            return $this->avatar;
+            if (str_starts_with($this->avatar, 'http://') || str_starts_with($this->avatar, 'https://')) {
+                return $this->avatar;
+            }
+            $cleanPath = ltrim($this->avatar, '/');
+            if (str_starts_with($cleanPath, 'storage/')) {
+                $cleanPath = substr($cleanPath, 8);
+            }
+            return \Illuminate\Support\Facades\Storage::disk('public')->url($cleanPath);
         }
 
         return 'https://ui-avatars.com/api/?name=' . urlencode($this->name ?? 'U')

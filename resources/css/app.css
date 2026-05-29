@@ -7,6 +7,7 @@
 @source '../views/pages/**/*.blade.php'
 @source '../views/**/**/*.blade.php'
 @source '../**/*.js';
+@source '../**/*.jsx';
 
 @theme {
     /* codigo de colores */

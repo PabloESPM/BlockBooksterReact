@@ -32,6 +32,7 @@ return new class extends Migration
             $table->tinyInteger('rating')->nullable(); // 1–5
 
             $table->unique(['user_id', 'book_isbn']);
+            $table->index('book_isbn');
         });
 
     }

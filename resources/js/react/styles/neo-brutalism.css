@@ -1,0 +1,87 @@
+/*
+ * Neo-Brutalism Design Tokens & Utilities for React
+ * Mirrors the existing Tailwind @layer components from app.css
+ * These classes are already defined in app.css and available globally.
+ *
+ * This file adds React-specific utilities and transitions.
+ */
+
+/* Transition defaults for interactive elements */
+.neo-transition {
+    transition: all 150ms ease-in-out;
+}
+
+/* Loading spinner — neo-brutalism style */
+.neo-spinner {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    border: 3px solid #000;
+    border-top-color: #FFA903;
+    animation: neo-spin 0.6s linear infinite;
+}
+
+@keyframes neo-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Loading skeleton — neo-brutalism style */
+.neo-skeleton {
+    background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+    background-size: 200% 100%;
+    animation: neo-skeleton-pulse 1.5s ease-in-out infinite;
+    border: 2px solid #000;
+}
+
+@keyframes neo-skeleton-pulse {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Modal overlay */
+.neo-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Toast notification */
+.neo-toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 100;
+    padding: 1rem 1.5rem;
+    border: 2px solid #000;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    box-shadow: 4px 4px 0px 0px #000;
+    animation: neo-toast-in 300ms ease-out;
+}
+
+.neo-toast--success {
+    background: #FFA903;
+    color: #000;
+}
+
+.neo-toast--error {
+    background: #DC2626;
+    color: #FFF;
+}
+
+@keyframes neo-toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(1rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

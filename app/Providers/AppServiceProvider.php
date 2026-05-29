@@ -24,7 +24,7 @@ class AppServiceProvider extends ServiceProvider
         Builder::macro('whereLikeAccentInsensitive', function ($attribute, $searchTerm) {
             $searchTerm = trim(mb_strtolower($searchTerm));
             return $this->whereRaw(
-                "translate(lower({$attribute}), 'áéíóúàèìòùäëïöüñ', 'aeiouaeiouaeioun') LIKE translate(lower(?), 'áéíóúàèìòùäëïöüñ', 'aeiouaeioun')",
+                "translate(lower({$attribute}), 'áéíóúàèìòùäëïöüñ', 'aeiouaeiouaeioun') LIKE translate(lower(?), 'áéíóúàèìòùäëïöüñ', 'aeiouaeiouaeioun')",
                 ['%' . $searchTerm . '%']
             );
         });
@@ -32,7 +32,7 @@ class AppServiceProvider extends ServiceProvider
         Builder::macro('orWhereLikeAccentInsensitive', function ($attribute, $searchTerm) {
             $searchTerm = trim(mb_strtolower($searchTerm));
             return $this->orWhereRaw(
-                "translate(lower({$attribute}), 'áéíóúàèìòùäëïöüñ', 'aeiouaeiouaeioun') LIKE translate(lower(?), 'áéíóúàèìòùäëïöüñ', 'aeiouaeioun')",
+                "translate(lower({$attribute}), 'áéíóúàèìòùäëïöüñ', 'aeiouaeiouaeioun') LIKE translate(lower(?), 'áéíóúàèìòùäëïöüñ', 'aeiouaeiouaeioun')",
                 ['%' . $searchTerm . '%']
             );
         });

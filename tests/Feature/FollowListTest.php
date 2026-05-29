@@ -5,17 +5,13 @@ namespace Tests\Feature;
 use App\Models\FavList;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Livewire;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * Tests básicos para la funcionalidad de seguir listas.
+ * Tests para la funcionalidad de seguir y dar like a listas.
  *
- * Cubre los flujos críticos del sistema de listas seguidas:
- * - Seguir y dejar de seguir una lista ajena
- * - Prevención de seguir la propia lista
- * - Visibilidad en el dashboard y en el perfil público
- * - Avatar del creador en el detalle de lista
+ * Cubre los flujos críticos del sistema de listas seguidas/liked a nivel de API REST.
  */
 class FollowListTest extends TestCase
 {
@@ -47,11 +43,10 @@ class FollowListTest extends TestCase
     }
 
     // ─────────────────────────────────────────────
-    //  Test 1: Seguir una lista ajena
+    //  Test 1: Seguir una lista ajena a nivel de Modelo
     // ─────────────────────────────────────────────
 
-    /** @test */
-    public function un_usuario_puede_seguir_una_lista_ajena(): void
+    public function test_un_usuario_puede_seguir_una_lista_ajena_modelo(): void
     {
         $seguidor = $this->crearUsuario();
         $creador  = $this->crearUsuario();
@@ -69,11 +64,10 @@ class FollowListTest extends TestCase
     }
 
     // ─────────────────────────────────────────────
-    //  Test 2: Dejar de seguir (toggle)
+    //  Test 2: Dejar de seguir a nivel de Modelo
     // ─────────────────────────────────────────────
 
-    /** @test */
-    public function un_usuario_puede_dejar_de_seguir_una_lista(): void
+    public function test_un_usuario_puede_dejar_de_seguir_una_lista_modelo(): void
     {
         $seguidor = $this->crearUsuario();
         $creador  = $this->crearUsuario();
@@ -92,148 +86,104 @@ class FollowListTest extends TestCase
     }
 
     // ─────────────────────────────────────────────
-    //  Test 3: No se puede seguir la propia lista
+    //  Test 3: Seguir lista vía API (endpoint /follow)
     // ─────────────────────────────────────────────
 
-    /** @test */
-    public function el_componente_follow_button_impide_seguir_la_propia_lista(): void
-    {
-        $usuario = $this->crearUsuario();
-        $lista   = $this->crearLista($usuario);
-
-        // El componente debe detectar que es la propia lista y no crear el registro
-        Livewire::actingAs($usuario)
-            ->test('components.follow-button', ['model' => $lista, 'type' => 'list'])
-            ->call('toggle');
-
-        $this->assertDatabaseMissing('list_likes', [
-            'user_id' => $usuario->id,
-            'list_id' => $lista->id,
-        ]);
-    }
-
-    // ─────────────────────────────────────────────
-    //  Test 4: Dashboard muestra listas seguidas
-    // ─────────────────────────────────────────────
-
-    /** @test */
-    public function el_dashboard_muestra_listas_seguidas_por_el_usuario(): void
+    public function test_un_usuario_puede_seguir_una_lista_ajena_via_api(): void
     {
         $seguidor = $this->crearUsuario();
         $creador  = $this->crearUsuario();
-        $lista    = $this->crearLista($creador, ['name' => 'Lista Seguida Prueba']);
+        $lista    = $this->crearLista($creador);
 
-        $seguidor->followList($lista);
+        Sanctum::actingAs($seguidor);
 
-        Livewire::actingAs($seguidor)
-            ->test('pages.dashboard.lists')
-            ->assertSee('Lista Seguida Prueba')
-            ->assertSee('Listas Seguidas');
+        $response = $this->postJson("/api/lists/{$lista->id}/follow");
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('following', true);
+        $response->assertJsonPath('likes_count', 1);
+
+        $this->assertTrue($seguidor->fresh()->isFollowingList($lista));
     }
 
     // ─────────────────────────────────────────────
-    //  Test 5: Dashboard no muestra listas creadas en sección "Seguidas"
+    //  Test 4: Dejar de seguir lista vía API (endpoint /follow)
     // ─────────────────────────────────────────────
 
-    /** @test */
-    public function las_listas_creadas_no_aparecen_en_la_seccion_seguidas(): void
+    public function test_un_usuario_puede_dejar_de_seguir_una_lista_via_api(): void
+    {
+        $seguidor = $this->crearUsuario();
+        $creador  = $this->crearUsuario();
+        $lista    = $this->crearLista($creador);
+
+        $seguidor->followList($lista);
+
+        Sanctum::actingAs($seguidor);
+
+        $response = $this->postJson("/api/lists/{$lista->id}/follow");
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('following', false);
+        $response->assertJsonPath('likes_count', 0);
+
+        $this->assertFalse($seguidor->fresh()->isFollowingList($lista));
+    }
+
+    // ─────────────────────────────────────────────
+    //  Test 5: Dashboard de listas
+    // ─────────────────────────────────────────────
+
+    public function test_el_dashboard_retorna_listas_del_usuario(): void
     {
         $usuario = $this->crearUsuario();
-        $lista   = $this->crearLista($usuario, ['name' => 'Mi Lista Propia']);
+        $this->crearLista($usuario, ['name' => 'Mi Lista Propia']);
 
-        Livewire::actingAs($usuario)
-            ->test('pages.dashboard.lists')
-            ->assertSee('Mi Lista Propia')          // Aparece en "Creadas"
-            ->assertSee('Listas Creadas');
-        // No necesitamos verificar que NO está en "Seguidas" porque el HTML
-        // puede repetir el nombre; verificamos la lógica de datos en los tests de modelo.
+        Sanctum::actingAs($usuario);
+
+        $response = $this->getJson("/api/dashboard/lists");
+
+        $response->assertStatus(200);
+        $response->assertJsonFragment(['name' => 'Mi Lista Propia']);
     }
 
     // ─────────────────────────────────────────────
     //  Test 6: Perfil público muestra listas seguidas
     // ─────────────────────────────────────────────
 
-    /** @test */
-    public function el_perfil_publico_muestra_listas_seguidas_cuando_son_publicas(): void
+    public function test_el_perfil_publico_muestra_listas_cuando_son_publicas(): void
     {
         $propietario = $this->crearUsuario(['profile_visibility' => 'public']);
-        $creador     = $this->crearUsuario();
-        $lista       = $this->crearLista($creador, [
-            'name'       => 'Lista Pública Seguida',
+        $this->crearLista($propietario, [
+            'name'       => 'Lista Pública',
             'visibility' => 'public',
         ]);
 
-        $propietario->followList($lista);
+        $visitante = $this->crearUsuario();
+        Sanctum::actingAs($visitante);
 
-        Livewire::test('pages.users.show', ['user' => $propietario])
-            ->assertSee('Listas Seguidas')
-            ->assertSee('Lista Pública Seguida');
+        $response = $this->getJson("/api/users/{$propietario->id}/lists");
+
+        $response->assertStatus(200);
+        $response->assertJsonFragment(['name' => 'Lista Pública']);
     }
 
     // ─────────────────────────────────────────────
-    //  Test 7: Perfil privado oculta las listas seguidas
+    //  Test 7: Perfil privado oculta las listas
     // ─────────────────────────────────────────────
 
-    /** @test */
-    public function el_perfil_privado_oculta_las_listas_seguidas(): void
+    public function test_el_perfil_privado_oculta_las_listas(): void
     {
         $propietario = $this->crearUsuario(['profile_visibility' => 'private']);
-        $creador     = $this->crearUsuario();
-        $lista       = $this->crearLista($creador, ['visibility' => 'public']);
-
-        $propietario->followList($lista);
+        $this->crearLista($propietario, [
+            'name'       => 'Lista en Perfil Privado',
+            'visibility' => 'public',
+        ]);
 
         $visitante = $this->crearUsuario();
+        Sanctum::actingAs($visitante);
 
-        Livewire::actingAs($visitante)
-            ->test('pages.users.show', ['user' => $propietario])
-            ->assertDontSee('Listas Seguidas');
-    }
+        $response = $this->getJson("/api/users/{$propietario->id}/lists");
 
-    // ─────────────────────────────────────────────
-    //  Test 8: El detalle de lista muestra el avatar_url del creador
-    // ─────────────────────────────────────────────
-
-    /** @test */
-    public function el_detalle_de_lista_usa_el_avatar_url_del_creador(): void
-    {
-        $creador = $this->crearUsuario(['avatar' => '/storage/userimg/foto.jpg']);
-        $lista   = $this->crearLista($creador);
-
-        Livewire::test('pages.list.show', ['list' => $lista])
-            ->assertSee('/storage/userimg/foto.jpg');
-    }
-
-    /** @test */
-    public function el_detalle_de_lista_usa_ui_avatars_como_fallback_si_no_hay_foto(): void
-    {
-        $creador = $this->crearUsuario(['avatar' => null, 'name' => 'Juan Pérez']);
-        $lista   = $this->crearLista($creador);
-
-        Livewire::test('pages.list.show', ['list' => $lista])
-            ->assertSee('ui-avatars.com');
-    }
-
-    // ─────────────────────────────────────────────
-    //  Test 9: Carga dinámica en el dashboard
-    // ─────────────────────────────────────────────
-
-    /** @test */
-    public function el_boton_cargar_mas_incrementa_el_limite_de_listas_seguidas(): void
-    {
-        $seguidor = $this->crearUsuario();
-        $creador  = $this->crearUsuario();
-
-        // Crear 8 listas (más que el límite inicial de 6)
-        for ($i = 1; $i <= 8; $i++) {
-            $lista = $this->crearLista($creador, ['name' => "Lista Seguida {$i}"]);
-            $seguidor->followList($lista);
-        }
-
-        Livewire::actingAs($seguidor)
-            ->test('pages.dashboard.lists')
-            ->assertSet('followedLimit', 6)
-            ->call('loadMore', 'followed')
-            ->assertSet('followedLimit', 12);
+        $response->assertStatus(403);
     }
 }

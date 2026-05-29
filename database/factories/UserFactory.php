@@ -17,13 +17,13 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => $this->faker->name(),
+            'name' => substr($this->faker->name(), 0, 25),
             'email' => $this->faker->unique()->safeEmail(),
             'telephone' => $this->faker->phoneNumber(),
             'password' => Hash::make('password'),
             'date_of_birth' => $this->faker->date(),
             'gender' => $this->faker->randomElement(['Male', 'Female', 'Other']),
-            'bio' => $this->faker->optional(0.8)->paragraphs(2, true),
+            'bio' => $this->faker->optional(0.8)->realTextBetween(50, 300),
             'profile_visibility' => $this->faker->randomElement([
                 'public',
                 'followers',

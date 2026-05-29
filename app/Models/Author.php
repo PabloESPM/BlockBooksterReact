@@ -22,6 +22,7 @@ class Author extends Model
         'country_id',
         'biography',
         'photo_url',
+        'slug',
     ];
 
     /**
@@ -43,7 +44,12 @@ class Author extends Model
                     return $this->photo_url;
                 }
 
-                return \Illuminate\Support\Facades\Storage::url($this->photo_url);
+                $cleanPath = ltrim($this->photo_url, '/');
+                if (str_starts_with($cleanPath, 'storage/')) {
+                    $cleanPath = substr($cleanPath, 8);
+                }
+
+                return \Illuminate\Support\Facades\Storage::disk('public')->url($cleanPath);
             }
         );
     }
@@ -77,5 +83,40 @@ class Author extends Model
     {
         return $this->followers()->where('user_id', $user->id)->exists();
     }
+
+    /**
+     * Ciclo de vida y eventos del modelo Author.
+     */
+    protected static function booted(): void
+    {
+        // Generar y actualizar el slug de forma única antes de guardar
+        static::saving(function (Author $author) {
+            if ($author->isDirty(['name', 'surname']) || !$author->slug) {
+                $fullName = trim($author->name . ' ' . ($author->surname ?? ''));
+                $slug = \Illuminate\Support\Str::slug($fullName);
+                if (empty($slug)) {
+                    $slug = 'author';
+                }
+
+                $originalSlug = $slug;
+                $counter = 1;
+                while (static::where('slug', $slug)->where('id', '!=', $author->id)->exists()) {
+                    $slug = $originalSlug . '-' . $counter;
+                    $counter++;
+                }
+                $author->slug = $slug;
+            }
+        });
+
+        // Eliminar en cascada los libros que solo pertenecen a este autor
+        static::deleting(function (Author $author) {
+            foreach ($author->books as $book) {
+                if ($book->authors()->count() <= 1) {
+                    $book->delete();
+                }
+            }
+        });
+    }
 }
+
 
