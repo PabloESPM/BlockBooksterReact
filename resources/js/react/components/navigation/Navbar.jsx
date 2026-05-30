@@ -84,7 +84,7 @@ export default function Navbar() {
             <div className="max-w-7xl mx-auto px-4">
                 <div className="flex items-center justify-between h-16">
                     {/* Logo */}
-                    <Link to="/" className="text-2xl font-display font-black tracking-tighter uppercase shrink-0">
+                    <Link to="/" className="text-3xl font-display font-black tracking-tighter uppercase shrink-0 [text-shadow:1.2px_1.2px_0px_#000,-1.2px_-1.2px_0px_#000,1.2px_-1.2px_0px_#000,-1.2px_1.2px_0px_#000]">
                         Block<span className="text-brand-yellow">Book</span>ster
                     </Link>
 

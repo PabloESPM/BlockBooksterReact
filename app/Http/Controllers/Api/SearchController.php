@@ -64,6 +64,13 @@ class SearchController extends Controller
 
         $totalResults = $books->count() + $authors->count() + $users->count() + $lists->count() + $genres->count();
 
+        $viewer = auth('sanctum')->user();
+        if ($viewer) {
+            foreach ($users as $user) {
+                $user->is_following = $user->id === $viewer->id ? false : $viewer->isFollowing($user);
+            }
+        }
+
         return response()->json([
             'query' => $query,
             'total_results' => $totalResults,

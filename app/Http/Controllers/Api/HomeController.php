@@ -65,6 +65,13 @@ class HomeController extends Controller
             ->take(5)
             ->get();
 
+        $viewer = auth('sanctum')->user();
+        if ($viewer) {
+            foreach ($featuredUsers as $user) {
+                $user->is_following = $user->id === $viewer->id ? false : $viewer->isFollowing($user);
+            }
+        }
+
         return response()->json([
             'latest' => BookResource::collection($latest),
             'top_rated' => BookResource::collection($topRated),

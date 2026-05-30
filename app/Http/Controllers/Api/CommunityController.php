@@ -36,6 +36,19 @@ class CommunityController extends Controller
             ->take(5)
             ->get();
 
+        $viewer = auth('sanctum')->user();
+        if ($viewer) {
+            foreach ($mostFollowed as $user) {
+                $user->is_following = $user->id === $viewer->id ? false : $viewer->isFollowing($user);
+            }
+            foreach ($topCurators as $user) {
+                $user->is_following = $user->id === $viewer->id ? false : $viewer->isFollowing($user);
+            }
+            foreach ($mostActive as $user) {
+                $user->is_following = $user->id === $viewer->id ? false : $viewer->isFollowing($user);
+            }
+        }
+
         return response()->json([
             'most_followed' => UserResource::collection($mostFollowed),
             'top_curators' => UserResource::collection($topCurators),

@@ -35,6 +35,22 @@ class AuthorController extends Controller
         // Estrellas emergentes: últimos autores añadidos
         $newAuthors = Author::latest()->take(4)->get();
 
+        $viewer = auth('sanctum')->user();
+        if ($viewer) {
+            foreach ($popular as $author) {
+                $author->is_followed = $author->isFollowedBy($viewer);
+            }
+            foreach ($classics as $author) {
+                $author->is_followed = $author->isFollowedBy($viewer);
+            }
+            foreach ($mostRated as $author) {
+                $author->is_followed = $author->isFollowedBy($viewer);
+            }
+            foreach ($newAuthors as $author) {
+                $author->is_followed = $author->isFollowedBy($viewer);
+            }
+        }
+
         return response()->json([
             'popular' => AuthorResource::collection($popular),
             'classics' => AuthorResource::collection($classics),

@@ -182,6 +182,13 @@ class UserProfileController extends Controller
 
         $users = $followers->through(fn ($follow) => $follow->follower);
 
+        $viewer = auth('sanctum')->user();
+        if ($viewer) {
+            foreach ($users->items() as $u) {
+                $u->is_following = $u->id === $viewer->id ? false : $viewer->isFollowing($u);
+            }
+        }
+
         return response()->json([
             'data' => UserResource::collection($users),
             'meta' => [
@@ -207,6 +214,13 @@ class UserProfileController extends Controller
             ->paginate(10);
 
         $users = $following->through(fn ($follow) => $follow->followed);
+
+        $viewer = auth('sanctum')->user();
+        if ($viewer) {
+            foreach ($users->items() as $u) {
+                $u->is_following = $u->id === $viewer->id ? false : $viewer->isFollowing($u);
+            }
+        }
 
         return response()->json([
             'data' => UserResource::collection($users),

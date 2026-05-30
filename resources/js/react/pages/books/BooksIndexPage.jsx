@@ -3,10 +3,12 @@ import { useSearchParams } from 'react-router-dom';
 import apiClient from '../../api/client';
 import BookCard from '../../components/cards/BookCard';
 import Pagination from '../../components/ui/Pagination';
+import AdvancedSearch from '../../components/books/AdvancedSearch';
+import BookFilters from '../../components/books/BookFilters';
 
 /**
- * Catálogo de libros con filtros y paginación.
- * Replica pages.books.index con sidebar de filtros.
+ * Catálogo de libros con filtros avanzados, filtros laterales y paginación.
+ * Replica el diseño y comportamiento de la página explorar libros Livewire.
  */
 export default function BooksIndexPage() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -14,8 +16,9 @@ export default function BooksIndexPage() {
     const [meta, setMeta] = useState(null);
     const [filters, setFilters] = useState({ genres: [], languages: [], countries: [] });
     const [loading, setLoading] = useState(true);
+    const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
-    // Cargar datos de filtros
+    // Cargar datos de filtros iniciales (géneros, idiomas, países)
     useEffect(() => {
         Promise.all([
             apiClient.get('/genres'),
@@ -23,25 +26,30 @@ export default function BooksIndexPage() {
             apiClient.get('/countries'),
         ]).then(([g, l, c]) => {
             setFilters({
-                genres: g.data.data,
-                languages: l.data.data,
-                countries: c.data.data,
+                genres: g.data.data || [],
+                languages: l.data.data || [],
+                countries: c.data.data || [],
             });
+        }).catch((err) => {
+            console.error('Error loading filters meta data:', err);
         });
     }, []);
 
-    // Cargar libros según filtros de URL
+    // Cargar listado de libros según parámetros de búsqueda de la URL
     useEffect(() => {
         setLoading(true);
         apiClient.get('/books', { params: Object.fromEntries(searchParams) })
             .then((res) => {
-                setBooks(res.data.data);
-                setMeta(res.data.meta);
+                setBooks(res.data.data || []);
+                setMeta(res.data.meta || null);
+            })
+            .catch((err) => {
+                console.error('Error fetching filtered books:', err);
             })
             .finally(() => setLoading(false));
     }, [searchParams]);
 
-    // Actualizar filtro en la URL
+    // Actualizar un filtro específico en la URL
     const updateFilter = (key, value) => {
         const params = new URLSearchParams(searchParams);
         if (value) {
@@ -49,10 +57,11 @@ export default function BooksIndexPage() {
         } else {
             params.delete(key);
         }
-        params.delete('page'); // Resetear página al cambiar filtro
+        params.delete('page'); // Resetear página al modificar cualquier filtro
         setSearchParams(params);
     };
 
+    // Cambiar de página
     const handlePageChange = (page) => {
         const params = new URLSearchParams(searchParams);
         params.set('page', page);
@@ -60,111 +69,80 @@ export default function BooksIndexPage() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    // Restablecer todos los filtros a sus valores por defecto
     const clearFilters = () => {
         setSearchParams({});
     };
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-8">
-            <h1 className="text-3xl font-black uppercase tracking-tight mb-8">
-                Catálogo de Libros
-            </h1>
+            {/* Barra Superior: Búsqueda Avanzada */}
+            <AdvancedSearch
+                searchParams={searchParams}
+                updateFilter={updateFilter}
+                loading={loading}
+            />
 
-            <div className="flex flex-col md:flex-row gap-6">
-                {/* Sidebar de filtros */}
-                <aside className="w-full md:w-64 shrink-0">
-                    <div className="neo-card p-4 space-y-4 sticky top-20">
-                        <h3 className="text-xs font-black uppercase tracking-widest border-b-2 border-black pb-2">
+            <div className="flex flex-col lg:flex-row gap-12">
+                {/* Filtros Laterales (Desktop sticky sidebar y Mobile drawer modal) */}
+                <BookFilters
+                    searchParams={searchParams}
+                    updateFilter={updateFilter}
+                    clearFilters={clearFilters}
+                    genres={filters.genres}
+                    countries={filters.countries}
+                    languages={filters.languages}
+                    isOpen={isMobileFiltersOpen}
+                    onClose={() => setIsMobileFiltersOpen(false)}
+                    loading={loading}
+                />
+
+                {/* Cuadrícula Principal de Resultados */}
+                <div className="flex-1">
+                    <div className="flex justify-between items-end mb-8">
+                        <h1 className="text-4xl font-display font-black uppercase flex items-center">
+                            <span className="bg-brand-yellow px-2 border-2 border-black mr-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-2xl">
+                                {meta?.total || 0}
+                            </span>
+                            Libros
+                        </h1>
+                        {/* Botón de Filtros Móvil */}
+                        <button
+                            onClick={() => setIsMobileFiltersOpen(true)}
+                            className="lg:hidden font-bold uppercase border-2 border-black px-4 py-2 hover:bg-gray-100 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none bg-white transition-all"
+                        >
                             Filtros
-                        </h3>
-
-                        {/* Búsqueda por título */}
-                        <div>
-                            <label className="text-xs font-bold uppercase mb-1 block">Título</label>
-                            <input
-                                type="text"
-                                className="neo-input text-sm"
-                                placeholder="Buscar título..."
-                                value={searchParams.get('title') || ''}
-                                onChange={(e) => updateFilter('title', e.target.value)}
-                            />
-                        </div>
-
-                        {/* Género */}
-                        <div>
-                            <label className="text-xs font-bold uppercase mb-1 block">Género</label>
-                            <select
-                                className="neo-input text-sm bg-white"
-                                value={searchParams.get('genre') || ''}
-                                onChange={(e) => updateFilter('genre', e.target.value)}
-                            >
-                                <option value="">Todos</option>
-                                {filters.genres.map((g) => (
-                                    <option key={g.id} value={g.id}>{g.name}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Idioma */}
-                        <div>
-                            <label className="text-xs font-bold uppercase mb-1 block">Idioma</label>
-                            <select
-                                className="neo-input text-sm bg-white"
-                                value={searchParams.get('language') || ''}
-                                onChange={(e) => updateFilter('language', e.target.value)}
-                            >
-                                <option value="">Todos</option>
-                                {filters.languages.map((l) => (
-                                    <option key={l.id} value={l.code}>{l.name}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Ordenación */}
-                        <div>
-                            <label className="text-xs font-bold uppercase mb-1 block">Ordenar por</label>
-                            <select
-                                className="neo-input text-sm bg-white"
-                                value={searchParams.get('sort') || ''}
-                                onChange={(e) => updateFilter('sort', e.target.value)}
-                            >
-                                <option value="">Más recientes</option>
-                                <option value="oldest">Más antiguos</option>
-                                <option value="title_asc">Título A-Z</option>
-                                <option value="title_desc">Título Z-A</option>
-                            </select>
-                        </div>
-
-                        {/* Limpiar */}
-                        <button onClick={clearFilters} className="w-full neo-btn-secondary text-xs">
-                            Limpiar filtros
                         </button>
                     </div>
-                </aside>
 
-                {/* Grid de libros */}
-                <div className="flex-grow">
-                    {loading ? (
-                        <div className="flex justify-center py-20">
-                            <div className="neo-spinner"></div>
+                    {/* Indicador de carga global */}
+                    {loading && (
+                        <div className="flex items-center justify-center gap-3 py-6">
+                            <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                            <span className="font-bold uppercase text-sm text-gray-500">Cargando resultados...</span>
                         </div>
-                    ) : books.length === 0 ? (
-                        <div className="neo-card p-12 text-center">
-                            <p className="text-lg font-bold mb-2">No se encontraron libros</p>
-                            <p className="text-sm text-gray-500">Intenta con otros filtros de búsqueda.</p>
+                    )}
+
+                    {/* Contenido / Estado Vacío */}
+                    {!loading && books.length === 0 ? (
+                        <div className="text-center py-12">
+                            <p className="text-xl font-bold uppercase text-gray-500">No se han encontrado libros.</p>
                         </div>
                     ) : (
-                        <>
-                            <p className="text-xs font-bold text-gray-500 uppercase mb-4">
-                                {meta?.total} libro{meta?.total !== 1 ? 's' : ''} encontrado{meta?.total !== 1 ? 's' : ''}
-                            </p>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                                {books.map((book) => (
-                                    <BookCard key={book.isbn} book={book} />
-                                ))}
-                            </div>
+                        <div className={`${loading ? 'hidden' : 'grid'} grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-6`}>
+                            {books.map((book) => (
+                                <div key={book.isbn} className="h-full">
+                                    <BookCard book={book} />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Paginación */}
+                    {!loading && meta && (
+                        <div>
                             <Pagination meta={meta} onPageChange={handlePageChange} />
-                        </>
+                        </div>
                     )}
                 </div>
             </div>
