@@ -28,7 +28,12 @@ export default function BookCard({ book }) {
     const handleAddReview = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        window.dispatchEvent(new CustomEvent('open-add-review-modal', { detail: { bookId: book.isbn } }));
+        window.dispatchEvent(new CustomEvent('open-add-review-modal', {
+            detail: {
+                bookId: book.isbn,
+                review: book.user_review || null
+            }
+        }));
     };
 
     return (
@@ -82,7 +87,7 @@ export default function BookCard({ book }) {
                             onClick={handleAddReview}
                             className="text-xs font-bold uppercase hover:bg-brand-blue hover:text-white px-2 py-1 -mr-2 transition-colors cursor-pointer"
                         >
-                            + Reseña
+                            {book.user_review ? 'Editar' : '+ Reseña'}
                         </button>
                     )}
                 </div>

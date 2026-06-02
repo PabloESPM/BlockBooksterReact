@@ -111,6 +111,7 @@ export default function ListCard({ list, dashboard = false, onDelete }) {
                                 id={list.id}
                                 initialLiked={list.is_liked}
                                 initialCount={list.likes_count ?? 0}
+                                disabled={!!list.is_owner}
                             />
                         </div>
                     </div>
@@ -124,7 +125,7 @@ export default function ListCard({ list, dashboard = false, onDelete }) {
                             className="w-full h-full object-cover"
                             onError={(e) => {
                                 e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(list.user?.name || 'U')}&size=80&background=0E3FA9&color=fff`;
-                              }}
+                            }}
                         />
                     </div>
                     <span className="text-xs font-bold uppercase text-gray-600 truncate">

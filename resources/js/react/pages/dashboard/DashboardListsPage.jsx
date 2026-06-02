@@ -1,92 +1,192 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import apiClient from '../../api/client';
 import ListCard from '../../components/cards/ListCard';
 
 /**
- * Mis Listas — Replica pages.dashboard.lists.
+ * Mis Listas — Colecciones creadas por el usuario y listas que sigue.
+ * Replica la maquetación y la paginación progresiva de la vista original.
  */
 export default function DashboardListsPage() {
-    const [lists, setLists] = useState([]);
+    const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [showForm, setShowForm] = useState(false);
-    const [form, setForm] = useState({ name: '', description: '', visibility: 'public' });
-    const [errors, setErrors] = useState({});
-    const [saving, setSaving] = useState(false);
+    const [createdLimit, setCreatedLimit] = useState(6);
+    const [followedLimit, setFollowedLimit] = useState(6);
+    const [loadingMore, setLoadingMore] = useState({
+        created: false,
+        followed: false,
+    });
 
-    const loadLists = () => {
-        apiClient.get('/dashboard/lists').then((res) => {
-            setLists(res.data.data);
+    const loadData = (limits = {}) => {
+        const params = {
+            created_limit: limits.createdLimit ?? createdLimit,
+            followed_limit: limits.followedLimit ?? followedLimit,
+        };
+        return apiClient.get('/dashboard/lists', { params })
+            .then((res) => {
+                setData(res.data);
+            })
+            .catch((err) => {
+                console.error('Error loading dashboard lists data:', err);
+            });
+    };
+
+    useEffect(() => {
+        setLoading(true);
+        loadData().finally(() => {
             setLoading(false);
         });
-    };
-
-    useEffect(() => { loadLists(); }, []);
-
-    const handleCreate = async (e) => {
-        e.preventDefault();
-        setErrors({});
-        setSaving(true);
-        try {
-            await apiClient.post('/lists', form);
-            setForm({ name: '', description: '', visibility: 'public' });
-            setShowForm(false);
-            loadLists();
-        } catch (error) {
-            if (error.response?.status === 422) setErrors(error.response.data.errors || {});
-        } finally { setSaving(false); }
-    };
+    }, []);
 
     const handleDelete = async (listId) => {
         if (!confirm('¿Seguro que quieres eliminar esta lista?')) return;
-        await apiClient.delete(`/lists/${listId}`);
-        loadLists();
+        try {
+            await apiClient.delete(`/lists/${listId}`);
+            await loadData();
+        } catch (err) {
+            console.error('Error deleting list:', err);
+        }
     };
 
-    if (loading) return <div className="flex justify-center py-12"><div className="neo-spinner"></div></div>;
+    const handleLoadMore = async (section) => {
+        setLoadingMore((prev) => ({ ...prev, [section]: true }));
+
+        let newLimits = { createdLimit, followedLimit };
+        if (section === 'created') {
+            newLimits.createdLimit = createdLimit + 6;
+            setCreatedLimit(newLimits.createdLimit);
+        } else if (section === 'followed') {
+            newLimits.followedLimit = followedLimit + 6;
+            setFollowedLimit(newLimits.followedLimit);
+        }
+
+        await loadData(newLimits);
+        setLoadingMore((prev) => ({ ...prev, [section]: false }));
+    };
+
+    if (loading) {
+        return (
+            <div className="flex justify-center py-12">
+                <div className="neo-spinner"></div>
+            </div>
+        );
+    }
 
     return (
-        <div>
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-black uppercase tracking-tight">Mis Listas</h1>
-                <button onClick={() => setShowForm(!showForm)} className="neo-btn-primary text-xs">
-                    {showForm ? 'Cancelar' : '+ Nueva lista'}
+        <div className="flex-grow space-y-8">
+            {/* Cabecera principal */}
+            <header className="mb-8 border-b-4 border-black pb-4 flex justify-between items-end gap-4">
+                <div>
+                    <h1 className="text-3xl font-black uppercase font-display">Mis Listas</h1>
+                    <p className="text-gray-600 font-bold mt-1">Colecciones que has creado y listas que sigues</p>
+                </div>
+                <button
+                    onClick={() => {
+                        window.dispatchEvent(new CustomEvent('open-add-to-list-modal'));
+                    }}
+                    className="neo-btn-primary text-xs cursor-pointer shrink-0"
+                >
+                    + Nueva lista
                 </button>
-            </div>
+            </header>
 
-            {/* Formulario de nueva lista */}
-            {showForm && (
-                <form onSubmit={handleCreate} className="neo-card p-4 mb-6 space-y-3">
-                    <input type="text" className="neo-input" placeholder="Nombre de la lista" value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} required />
-                    {errors.name && <span className="text-red-600 text-xs font-bold">{errors.name[0]}</span>}
-                    <textarea className="neo-input" rows="2" placeholder="Descripción (opcional)" value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} />
-                    <select className="neo-input bg-white" value={form.visibility} onChange={(e) => setForm(f => ({ ...f, visibility: e.target.value }))}>
-                        <option value="public">Pública</option>
-                        <option value="followers">Solo seguidores</option>
-                        <option value="friends">Solo amigos</option>
-                    </select>
-                    <button type="submit" className="neo-btn-primary text-xs" disabled={saving}>
-                        {saving ? 'Creando...' : 'Crear lista'}
-                    </button>
-                </form>
-            )}
+            {/* SECCIÓN 1: LISTAS CREADAS */}
+            <section className="mb-12">
+                <h2 className="text-xl font-black uppercase mb-4 flex items-center gap-2 border-b-2 border-black pb-2">
+                    <span className="w-3 h-3 bg-brand-blue border-2 border-black block"></span>
+                    Listas Creadas
+                    <span className="text-sm font-bold text-gray-500 normal-case ml-1">
+                        ({data?.total_created ?? 0})
+                    </span>
+                </h2>
 
-            {lists.length === 0 ? (
-                <div className="neo-card p-8 text-center">
-                    <p className="font-bold mb-2">No tienes listas</p>
-                    <p className="text-sm text-gray-500">¡Crea una para organizar tus lecturas!</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {lists.map((list) => (
-                        <ListCard 
-                            key={list.id} 
-                            list={list} 
-                            dashboard={true} 
-                            onDelete={handleDelete} 
-                        />
-                    ))}
-                </div>
-            )}
+                {data?.created?.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {data.created.map((list) => (
+                            <ListCard
+                                key={list.id}
+                                list={list}
+                                dashboard={true}
+                                onDelete={handleDelete}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="col-span-full text-center py-12 border-2 border-dashed border-black bg-gray-50">
+                        <p className="font-bold text-gray-500 uppercase">Aún no has creado ninguna lista.</p>
+                        <button
+                            onClick={() => {
+                                window.dispatchEvent(new CustomEvent('open-add-to-list-modal'));
+                            }}
+                            className="mt-4 text-brand-blue underline font-bold cursor-pointer"
+                        >
+                            Crea tu primera lista
+                        </button>
+                    </div>
+                )}
+
+                {/* Botón cargar más listas creadas */}
+                {data?.has_more_created && (
+                    <div className="mt-6 flex justify-center">
+                        <button
+                            onClick={() => handleLoadMore('created')}
+                            disabled={loadingMore.created}
+                            className="neo-btn-secondary px-8 py-3 uppercase font-black flex items-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+                        >
+                            {loadingMore.created && (
+                                <span className="inline-block w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+                            )}
+                            Cargar más listas creadas
+                        </button>
+                    </div>
+                )}
+            </section>
+
+            {/* SECCIÓN 2: LISTAS SEGUIDAS */}
+            <section>
+                <h2 className="text-xl font-black uppercase mb-4 flex items-center gap-2 border-b-2 border-black pb-2">
+                    <span className="w-3 h-3 bg-brand-yellow border-2 border-black block"></span>
+                    Listas Seguidas
+                    <span className="text-sm font-bold text-gray-500 normal-case ml-1">
+                        ({data?.total_followed ?? 0})
+                    </span>
+                </h2>
+
+                {data?.followed?.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {data.followed.map((list) => (
+                            <ListCard
+                                key={list.id}
+                                list={list}
+                                dashboard={false}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="col-span-full text-center py-12 border-2 border-dashed border-black bg-gray-50">
+                        <p className="font-bold text-gray-500 uppercase">Aún no sigues ninguna lista.</p>
+                        <Link to="/lists" className="mt-4 inline-block text-brand-blue underline font-bold">
+                            Explorar listas públicas
+                        </Link>
+                    </div>
+                )}
+
+                {/* Botón cargar más listas seguidas */}
+                {data?.has_more_followed && (
+                    <div className="mt-6 flex justify-center">
+                        <button
+                            onClick={() => handleLoadMore('followed')}
+                            disabled={loadingMore.followed}
+                            className="neo-btn-secondary px-8 py-3 uppercase font-black flex items-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+                        >
+                            {loadingMore.followed && (
+                                <span className="inline-block w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+                            )}
+                            Cargar más listas seguidas
+                        </button>
+                    </div>
+                )}
+            </section>
         </div>
     );
 }

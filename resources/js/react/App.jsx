@@ -38,12 +38,13 @@ import DashboardSettingsPage from './pages/dashboard/DashboardSettingsPage';
 
 // Admin (protegido, solo admin/worker)
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import AdminBooksPage from './pages/admin/AdminBooksPage';
-import AdminBookEditPage from './pages/admin/AdminBookEditPage';
-import AdminAuthorsPage from './pages/admin/AdminAuthorsPage';
-import AdminAuthorEditPage from './pages/admin/AdminAuthorEditPage';
-import AdminUsersPage from './pages/admin/AdminUsersPage';
-import AdminReviewsPage from './pages/admin/AdminReviewsPage';
+import AdminBooksPage from './pages/admin/books/AdminBooksPage';
+import AdminBookEditPage from './pages/admin/books/AdminBookEditPage';
+import AdminAuthorsPage from './pages/admin/authors/AdminAuthorsPage';
+import AdminAuthorEditPage from './pages/admin/authors/AdminAuthorEditPage';
+import AdminUsersPage from './pages/admin/users/AdminUsersPage';
+import AdminReviewsPage from './pages/admin/reviews/AdminReviewsPage';
+import AdminListPage from './pages/admin/lists/AdminListPage';
 
 // Páginas estáticas
 import {
@@ -85,6 +86,7 @@ export default function App() {
                 <Route path="authors/:id/edit" element={<AdminAuthorEditPage />} />
                 <Route path="users" element={<AdminUsersPage />} />
                 <Route path="reviews" element={<AdminReviewsPage />} />
+                <Route path="lists" element={<AdminListPage />} />
             </Route>
 
             {/* ── Rutas con layout principal (Navbar + Footer) ── */}

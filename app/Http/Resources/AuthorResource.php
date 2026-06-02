@@ -32,6 +32,8 @@ class AuthorResource extends JsonResource
 
             // Estado del usuario autenticado
             'is_followed' => $this->when(isset($this->is_followed), $this->is_followed),
+
+            'average_rating' => isset($this->average_rating) ? (float) $this->average_rating : null,
         ];
     }
 }

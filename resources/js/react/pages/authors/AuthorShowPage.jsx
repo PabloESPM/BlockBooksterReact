@@ -137,7 +137,7 @@ export default function AuthorShowPage() {
                             </div>
                             <div className="text-center md:text-left pl-4">
                                 <div className="text-2xl font-black flex items-center justify-center md:justify-start gap-1 select-none">
-                                    4.5 <span className="text-brand-yellow text-lg">★</span>
+                                    {author.average_rating ? Number(author.average_rating).toFixed(1) : '0.0'} <span className="text-brand-yellow text-lg">★</span>
                                 </div>
                                 <div className="text-xs font-bold uppercase text-gray-500">Valoración Media</div>
                             </div>

@@ -12,6 +12,7 @@ export default function AdminLayout() {
         { to: '/admin/authors', label: 'Autores', icon: '✍️' },
         { to: '/admin/users', label: 'Usuarios', icon: '👥' },
         { to: '/admin/reviews', label: 'Reseñas', icon: '💬' },
+        { to: '/admin/lists', label: 'Listas', icon: '📋' },
     ];
 
     return (

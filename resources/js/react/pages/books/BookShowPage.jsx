@@ -18,15 +18,12 @@ export default function BookShowPage() {
     const [relatedBooks, setRelatedBooks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [reviewPage, setReviewPage] = useState(1);
-
-    const [reviewForm, setReviewForm] = useState({ id: null, title: '', rating: 5, body: '' });
-    const [isEditing, setIsEditing] = useState(false);
-    const [submittingReview, setSubmittingReview] = useState(false);
-    const [reviewError, setReviewError] = useState(null);
+    const [myReview, setMyReview] = useState(null);
 
     const [updatingStatus, setUpdatingStatus] = useState(false);
     const [userBook, setUserBook] = useState(null);
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [buyDropdownOpen, setBuyDropdownOpen] = useState(false);
 
     const loadBook = () => {
         apiClient.get(`/books/${isbn}`, { params: { page: reviewPage } })
@@ -36,6 +33,7 @@ export default function BookShowPage() {
                 setRelatedAuthors(res.data.related_authors || []);
                 setRelatedBooks(res.data.related_books || []);
                 setUserBook(res.data.data.user_book || null);
+                setMyReview(res.data.my_review || null);
                 setLoading(false);
             });
     };
@@ -74,45 +72,13 @@ export default function BookShowPage() {
         }
     };
 
-    const handleSubmitReview = async (e) => {
-        e.preventDefault();
-        setSubmittingReview(true);
-        setReviewError(null);
-        try {
-            if (isEditing) {
-                await apiClient.put(`/reviews/${reviewForm.id}`, {
-                    title: reviewForm.title,
-                    rating: reviewForm.rating,
-                    body: reviewForm.body
-                });
-            } else {
-                await apiClient.post('/reviews', {
-                    book_isbn: isbn,
-                    title: reviewForm.title,
-                    rating: reviewForm.rating,
-                    body: reviewForm.body
-                });
-            }
-            setReviewForm({ id: null, title: '', rating: 5, body: '' });
-            setIsEditing(false);
-            loadBook();
-        } catch (err) {
-            console.error("Error submitting review:", err);
-            setReviewError(err.response?.data?.message || 'Error al guardar la reseña. Por favor, inténtalo de nuevo.');
-        } finally {
-            setSubmittingReview(false);
-        }
-    };
-
     const handleEditReview = (review) => {
-        setReviewForm({
-            id: review.id,
-            title: review.title || '',
-            rating: review.rating || 5,
-            body: review.body || ''
-        });
-        setIsEditing(true);
-        document.getElementById('review-form-anchor')?.scrollIntoView({ behavior: 'smooth' });
+        window.dispatchEvent(new CustomEvent('open-add-review-modal', {
+            detail: {
+                bookId: isbn,
+                review: review
+            }
+        }));
     };
 
     const handleDeleteReview = async (review) => {
@@ -165,7 +131,7 @@ export default function BookShowPage() {
 
             {/* SECCIÓN HERO: Portada + Información principal */}
             <section className="grid grid-cols-1 md:grid-cols-12 gap-8 mb-16">
-                
+
                 {/* Portada (columna izquierda) */}
                 <div className="md:col-span-4 lg:col-span-3">
                     <div className="neo-card p-0 relative group">
@@ -386,24 +352,64 @@ export default function BookShowPage() {
                         </button>
 
                         {/* Enlaces de compra */}
-                        {book.purchases?.map((p) => (
-                            <a
-                                key={p.id}
-                                href={p.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="neo-btn-secondary text-sm flex items-center gap-2"
-                            >
-                                Comprar en {p.store_name}
-                            </a>
-                        ))}
+                        {book.purchases && book.purchases.length > 0 && (
+                            book.purchases.length === 1 ? (
+                                <a
+                                    href={book.purchases[0].url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="neo-btn-secondary text-sm flex items-center gap-2"
+                                >
+                                    Comprar en {book.purchases[0].store_name}
+                                </a>
+                            ) : (
+                                <div className="flex items-stretch gap-2">
+                                    <a
+                                        href={book.purchases[0].url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="neo-btn-secondary text-sm flex items-center gap-2"
+                                    >
+                                        Comprar en {book.purchases[0].store_name}
+                                    </a>
+                                    <div className="relative flex">
+                                        <button
+                                            onClick={() => setBuyDropdownOpen(!buyDropdownOpen)}
+                                            className="neo-btn-secondary px-3 text-sm cursor-pointer flex items-center justify-center"
+                                            aria-label="Ver todas las tiendas de compra"
+                                        >
+                                            ▼
+                                        </button>
+                                        {buyDropdownOpen && (
+                                            <div
+                                                onMouseLeave={() => setBuyDropdownOpen(false)}
+                                                className="absolute top-full left-0 mt-2 w-56 bg-white border-2 border-black shadow-[4px_4px_0px_#000] z-20 flex flex-col"
+                                            >
+                                                {book.purchases.map((p) => (
+                                                    <a
+                                                        key={p.id}
+                                                        href={p.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={() => setBuyDropdownOpen(false)}
+                                                        className="text-left px-4 py-2 font-bold uppercase hover:bg-brand-yellow border-b last:border-b-0 border-black flex items-center gap-2 cursor-pointer text-xs"
+                                                    >
+                                                        Comprar en {p.store_name}
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )
+                        )}
                     </div>
                 </div>
             </section>
 
             {/* SEGUNDA FILA: Reseñas + Sidebar relacionados */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-                
+
                 {/* Sección Reseñas (2/3 del ancho) */}
                 <div className="lg:col-span-2">
                     <div className="flex items-center justify-between mb-6 border-b-2 border-black pb-2">
@@ -411,108 +417,33 @@ export default function BookShowPage() {
                             <span className="w-4 h-4 bg-brand-yellow border-2 border-black block"></span>
                             Reseñas de la comunidad
                         </h2>
-                        {isAuthenticated && (
+                        <div className="flex items-center gap-2">
                             <button
                                 onClick={() => {
-                                    setReviewForm({ id: null, title: '', rating: 5, body: '' });
-                                    setIsEditing(false);
-                                    document.getElementById('review-form-anchor')?.scrollIntoView({ behavior: 'smooth' });
+                                    window.dispatchEvent(new CustomEvent('open-add-to-list-modal', { detail: { bookId: isbn } }));
                                 }}
-                                className="text-sm font-bold uppercase bg-brand-blue text-white px-3 py-1 hover:bg-gray-800 transition-colors cursor-pointer"
+                                className="text-sm font-bold uppercase bg-brand-yellow text-black border-black px-3 py-1 hover:bg-black hover:text-white transition-colors cursor-pointer"
                             >
-                                Escribir reseña
+                                + LISTA
                             </button>
-                        )}
-                    </div>
-
-                    {/* Formulario de Reseña */}
-                    <div id="review-form-anchor" className="mb-8">
-                        {isAuthenticated ? (
-                            <div className="neo-card p-6 bg-white">
-                                <h3 className="text-lg font-black uppercase mb-4">
-                                    {isEditing ? '📝 Editar tu reseña' : '✍️ Escribe tu reseña'}
-                                </h3>
-                                {reviewError && (
-                                    <div className="p-3 mb-4 bg-red-100 border-2 border-red-500 font-bold text-red-700 text-xs uppercase">
-                                        ⚠️ {reviewError}
-                                    </div>
-                                )}
-                                <form onSubmit={handleSubmitReview} className="space-y-4">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-bold uppercase mb-2">
-                                                Valoración
-                                            </label>
-                                            <select
-                                                value={reviewForm.rating}
-                                                onChange={(e) => setReviewForm({ ...reviewForm, rating: parseInt(e.target.value) })}
-                                                className="neo-input bg-white font-bold"
-                                                required
-                                            >
-                                                <option value="5">⭐⭐⭐⭐⭐ (5 - Excelente)</option>
-                                                <option value="4">⭐⭐⭐⭐ (4 - Muy bueno)</option>
-                                                <option value="3">⭐⭐⭐ (3 - Bueno)</option>
-                                                <option value="2">⭐⭐ (2 - Regular)</option>
-                                                <option value="1">⭐ (1 - Malo)</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold uppercase mb-2">
-                                                Título (Opcional)
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={reviewForm.title}
-                                                onChange={(e) => setReviewForm({ ...reviewForm, title: e.target.value })}
-                                                className="neo-input"
-                                                placeholder="Ej. ¡Me encantó este libro!"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold uppercase mb-2">
-                                            Opinión
-                                        </label>
-                                        <textarea
-                                            value={reviewForm.body}
-                                            onChange={(e) => setReviewForm({ ...reviewForm, body: e.target.value })}
-                                            className="neo-input min-h-[120px] resize-y"
-                                            placeholder="Escribe tu opinión detallada sobre el libro aquí..."
-                                            maxLength="1000"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            type="submit"
-                                            disabled={submittingReview}
-                                            className="neo-btn-primary text-sm cursor-pointer"
-                                        >
-                                            {submittingReview ? 'Guardando...' : (isEditing ? 'Actualizar Reseña' : 'Publicar Reseña')}
-                                        </button>
-                                        {isEditing && (
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setIsEditing(false);
-                                                    setReviewForm({ id: null, title: '', rating: 5, body: '' });
-                                                }}
-                                                className="neo-btn-secondary text-sm cursor-pointer"
-                                            >
-                                                Cancelar
-                                            </button>
-                                        )}
-                                    </div>
-                                </form>
-                            </div>
-                        ) : (
-                            <div className="neo-card p-6 bg-brand-blue/10 border-brand-blue text-center">
-                                <p className="font-bold text-sm mb-2">Inicia sesión para escribir una reseña</p>
-                                <Link to="/login" className="inline-block neo-btn-primary text-xs uppercase">
-                                    Iniciar Sesión
-                                </Link>
-                            </div>
-                        )}
+                            {myReview ? (
+                                <button
+                                    onClick={() => handleEditReview(myReview)}
+                                    className="text-sm font-bold uppercase bg-brand-yellow text-black border-2 border-black px-3 py-1 hover:bg-black hover:text-white transition-colors cursor-pointer"
+                                >
+                                    Editar mi reseña
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => {
+                                        window.dispatchEvent(new CustomEvent('open-add-review-modal', { detail: { bookId: isbn } }));
+                                    }}
+                                    className="text-sm font-bold uppercase bg-brand-blue text-white border-white px-3 py-1 hover:bg-black transition-colors cursor-pointer"
+                                >
+                                    Escribir reseña
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     {reviews.data.length === 0 ? (

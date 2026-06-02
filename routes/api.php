@@ -74,6 +74,7 @@ Route::get('/users/{user}/reviews', [UserProfileController::class, 'reviews']);
 Route::get('/users/{user}/lists', [UserProfileController::class, 'lists']);
 Route::get('/users/{user}/followers', [UserProfileController::class, 'followers']);
 Route::get('/users/{user}/following', [UserProfileController::class, 'following']);
+Route::get('/users/{user}/authors', [UserProfileController::class, 'followedAuthors']);
 
 /*
 |--------------------------------------------------------------------------
@@ -171,4 +172,8 @@ Route::middleware(['auth:sanctum', 'role:admin,worker'])->prefix('admin')->group
     // Reseñas (moderación)
     Route::get('/reviews', [\App\Http\Controllers\Api\AdminController::class, 'reviews']);
     Route::delete('/reviews/{review}', [\App\Http\Controllers\Api\AdminController::class, 'reviewDelete']);
+
+    // Listas (moderación)
+    Route::get('/lists', [\App\Http\Controllers\Api\AdminController::class, 'lists']);
+    Route::delete('/lists/{list}', [\App\Http\Controllers\Api\AdminController::class, 'listDelete']);
 });

@@ -126,6 +126,7 @@ class BookController extends Controller
 
         // Estado del usuario autenticado respecto a este libro
         $userBook = null;
+        $myReview = null;
         if ($request->user()) {
             $bookUser = BookUser::where('user_id', $request->user()->id)
                 ->where('book_isbn', $book->isbn)
@@ -138,6 +139,15 @@ class BookController extends Controller
                     'started_at' => $bookUser->started_at?->toISOString(),
                     'finished_at' => $bookUser->finished_at?->toISOString(),
                 ];
+            }
+
+            $myReview = \App\Models\Review::where('user_id', $request->user()->id)
+                ->where('book_isbn', $book->isbn)
+                ->first();
+
+            if ($myReview) {
+                $myReview->load(['user', 'likes']);
+                $myReview->loadCount('likes');
             }
         }
 
@@ -167,6 +177,7 @@ class BookController extends Controller
 
         return response()->json([
             'data' => new BookResource($book),
+            'my_review' => $myReview ? new ReviewResource($myReview) : null,
             'reviews' => [
                 'data' => ReviewResource::collection($reviews),
                 'meta' => [

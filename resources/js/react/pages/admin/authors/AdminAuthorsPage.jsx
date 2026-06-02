@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import apiClient from '../../api/client';
-import Pagination from '../../components/ui/Pagination';
+import apiClient from '../../../api/client';
+import Pagination from '../../../components/ui/Pagination';
 
 /**
  * Gestión de autores en admin — Tabla con búsqueda, creación y eliminación.

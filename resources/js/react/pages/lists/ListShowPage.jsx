@@ -181,6 +181,7 @@ export default function ListShowPage() {
                                 id={list.id}
                                 initialLiked={list.is_liked}
                                 initialCount={list.likes_count ?? 0}
+                                disabled={isOwner}
                             />
                         </div>
 

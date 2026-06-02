@@ -42,6 +42,12 @@ class BookResource extends JsonResource
                 isset($this->user_book_status),
                 $this->user_book_status
             ),
+
+            'user_review' => $this->relationLoaded('reviews')
+                ? new \App\Http\Resources\ReviewResource($this->reviews->where('user_id', optional($request->user())->id)->first())
+                : ($request->user()
+                    ? new \App\Http\Resources\ReviewResource(\App\Models\Review::where('user_id', $request->user()->id)->where('book_isbn', $this->isbn)->first())
+                    : null),
         ];
     }
 }

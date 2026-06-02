@@ -67,6 +67,16 @@ class AuthorController extends Controller
         $author->load('country');
         $author->loadCount(['books', 'followers']);
 
+        // Calcular valoración media real del autor (media de las medias de sus libros con valoraciones)
+        $averageRating = \DB::table('author_book')
+            ->join('book_user', 'author_book.book_isbn', '=', 'book_user.book_isbn')
+            ->where('author_book.author_id', $author->id)
+            ->groupBy('author_book.book_isbn')
+            ->selectRaw('AVG(book_user.rating) as book_avg')
+            ->get()
+            ->avg('book_avg');
+        $author->average_rating = $averageRating;
+
         // Verificar si el usuario autenticado sigue a este autor
         if ($request->user()) {
             $author->is_followed = $author->isFollowedBy($request->user());

@@ -57,7 +57,7 @@ export default function FollowButton({
                     : 'bg-brand-yellow text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]'
             }`}
         >
-            {loading ? '...' : following ? 'Siguiendo' : 'Seguir'}
+            {loading ? '...' : following ? 'Dejar de seguir' : 'Seguir'}
         </button>
     );
 }

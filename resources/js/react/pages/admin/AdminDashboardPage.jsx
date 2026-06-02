@@ -44,7 +44,7 @@ export default function AdminDashboardPage() {
 
             {/* Acciones rápidas */}
             <h2 className="text-xl font-black uppercase mb-4 border-b-2 border-black pb-2">Acciones Rápidas</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <Link
                     to="/admin/books?action=create"
                     className="flex flex-col items-center justify-center p-6 bg-brand-blue text-white border-2 border-black shadow-[4px_4px_0px_#000] hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_#000] transition-all"
@@ -72,6 +72,13 @@ export default function AdminDashboardPage() {
                 >
                     <span className="text-2xl mb-2">✍️</span>
                     <span className="font-bold uppercase text-xs">Autores</span>
+                </Link>
+                <Link
+                    to="/admin/lists"
+                    className="flex flex-col items-center justify-center p-6 bg-white border-2 border-black shadow-[4px_4px_0px_#000] hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_#000] transition-all"
+                >
+                    <span className="text-2xl mb-2">📋</span>
+                    <span className="font-bold uppercase text-xs">Listas</span>
                 </Link>
             </div>
         </div>

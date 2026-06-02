@@ -24,13 +24,25 @@ class ReviewController extends Controller
             'body' => ['required', 'string', 'max:1000'],
         ]);
 
-        $review = $request->user()->reviews()->updateOrCreate(
-            ['book_isbn' => $validated['book_isbn']],
-            [
-                'title' => $validated['title'] ?? null,
-                'body' => $validated['body'],
-            ]
-        );
+        // Verificar si ya existe una reseña de este usuario para este libro
+        $exists = Review::where('user_id', $request->user()->id)
+            ->where('book_isbn', $validated['book_isbn'])
+            ->exists();
+
+        if ($exists) {
+            return response()->json([
+                'message' => 'Ya has escrito una reseña para este libro.',
+                'errors' => [
+                    'book_isbn' => ['Ya has escrito una reseña para este libro.']
+                ]
+            ], 422);
+        }
+
+        $review = $request->user()->reviews()->create([
+            'book_isbn' => $validated['book_isbn'],
+            'title' => $validated['title'] ?? null,
+            'body' => $validated['body'],
+        ]);
 
         // Guardar el rating en book_user (tabla separada)
         $request->user()->books()->updateOrCreate(

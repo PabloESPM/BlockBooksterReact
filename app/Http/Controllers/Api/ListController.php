@@ -22,7 +22,7 @@ class ListController extends Controller
             ->with([
                 'user',
                 'likes',
-                'books' => fn ($q) => $q->take(4), // Vista previa de portadas
+                'books' => fn($q) => $q->take(4), // Vista previa de portadas
             ])
             ->withCount(['books', 'likes'])
             ->latest()
@@ -226,7 +226,7 @@ class ListController extends Controller
             'public' => true,
             'followers' => $isOwner || ($viewer && $viewer->isFollowing($user)),
             'friends' => $isOwner || ($viewer && $viewer->isFriend($user)),
-            'private' => (bool)$isOwner,
+            'private' => (bool) $isOwner,
             default => true,
         };
     }

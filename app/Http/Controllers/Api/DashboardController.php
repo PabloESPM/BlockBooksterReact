@@ -7,6 +7,7 @@ use App\Http\Resources\UserResource;
 use App\Http\Resources\ReviewResource;
 use App\Http\Resources\FavListResource;
 use App\Http\Resources\AuthorResource;
+use App\Http\Resources\BookResource;
 use App\Models\Country;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,22 +17,71 @@ use Illuminate\Support\Facades\Hash;
 class DashboardController extends Controller
 {
     /**
-     * Estadísticas principales del dashboard del usuario.
+     * Estadísticas principales y colecciones del dashboard del usuario.
      */
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
 
+        $stats = [
+            'read_books' => $user->books()->where('status', 'read')->count(),
+            'reading_books' => $user->books()->where('status', 'reading')->count(),
+            'pending_books' => $user->books()->where('status', 'pending')->count(),
+            'lists' => $user->lists()->count(),
+            'reviews' => $user->reviews()->count(),
+            'followers' => $user->followers()->count(),
+            'following' => $user->following()->count(),
+        ];
+
+        // 1. Libros en lectura
+        $librosEnLectura = $user->books()
+            ->with(['book.authors'])
+            ->where('status', 'reading')
+            ->orderByDesc('started_at')
+            ->orderByDesc('id')
+            ->get();
+
+        // 2. Actividad reciente
+        $actividadReciente = $user->books()
+            ->with('book')
+            ->whereIn('status', ['read', 'reading'])
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get();
+
+        // 3. Libros para leer (pending)
+        $librosParaLeerColeccion = $user->books()
+            ->with('book.authors')
+            ->where('status', 'pending')
+            ->orderByDesc('id')
+            ->limit(6)
+            ->get();
+
+        // 4. Libros leídos
+        $librosLeidosColeccion = $user->books()
+            ->with('book.authors')
+            ->where('status', 'read')
+            ->orderByDesc('finished_at')
+            ->orderByDesc('id')
+            ->limit(6)
+            ->get();
+
+        $formatBookUser = function($item) {
+            return [
+                'id' => $item->id,
+                'status' => $item->status,
+                'started_at' => $item->started_at?->toIso8601String(),
+                'finished_at' => $item->finished_at?->toIso8601String(),
+                'book' => $item->book ? new BookResource($item->book) : null,
+            ];
+        };
+
         return response()->json([
-            'stats' => [
-                'read_books' => $user->books()->where('status', 'read')->count(),
-                'reading_books' => $user->books()->where('status', 'reading')->count(),
-                'pending_books' => $user->books()->where('status', 'pending')->count(),
-                'lists' => $user->lists()->count(),
-                'reviews' => $user->reviews()->count(),
-                'followers' => $user->followers()->count(),
-                'following' => $user->following()->count(),
-            ],
+            'stats' => $stats,
+            'reading_books' => $librosEnLectura->map($formatBookUser),
+            'recent_activity' => $actividadReciente->map($formatBookUser),
+            'pending_collection' => $librosParaLeerColeccion->map($formatBookUser),
+            'read_collection' => $librosLeidosColeccion->map($formatBookUser),
         ]);
     }
 
@@ -89,18 +139,45 @@ class DashboardController extends Controller
     }
 
     /**
-     * Listas del usuario autenticado.
+     * Listas del usuario autenticado (creadas y seguidas).
      */
     public function lists(Request $request): JsonResponse
     {
-        $lists = $request->user()->lists()
-            ->with('likes')
-            ->withCount(['books', 'likes'])
+        $user = $request->user();
+
+        $createdLimit = (int) $request->input('created_limit', 6);
+        $followedLimit = (int) $request->input('followed_limit', 6);
+
+        // --- Listas CREADAS por el usuario ---
+        $createdLists = $user->lists()
+            ->with(['user', 'books', 'likes'])
+            ->withCount(['likes', 'books'])
             ->latest()
+            ->take($createdLimit)
             ->get();
 
+        $totalCreated = $user->lists()->count();
+        $hasMoreCreated = $totalCreated > $createdLimit;
+
+        // --- Listas SEGUIDAS (liked) por el usuario ---
+        $followedLists = $user->likedLists()
+            ->with(['user', 'books', 'likes'])
+            ->withCount(['books', 'likes'])
+            ->latest('list_likes.created_at')
+            ->take($followedLimit)
+            ->get();
+
+        $totalFollowed = $user->likedLists()->count();
+        $hasMoreFollowed = $totalFollowed > $followedLimit;
+
         return response()->json([
-            'data' => FavListResource::collection($lists),
+            'created' => FavListResource::collection($createdLists),
+            'total_created' => $totalCreated,
+            'has_more_created' => $hasMoreCreated,
+
+            'followed' => FavListResource::collection($followedLists),
+            'total_followed' => $totalFollowed,
+            'has_more_followed' => $hasMoreFollowed,
         ]);
     }
 
@@ -123,24 +200,72 @@ class DashboardController extends Controller
     }
 
     /**
-     * Datos sociales: seguidores, seguidos, autores seguidos.
+     * Datos sociales: seguidores, seguidos, autores seguidos con soporte de paginación/límites.
      */
     public function social(Request $request): JsonResponse
     {
         $user = $request->user();
 
-        $followers = $user->followers()->with('follower')->latest()->take(10)->get()
-            ->map(fn ($f) => $f->follower);
-        $following = $user->following()->with('followed')->latest()->take(10)->get()
-            ->map(fn ($f) => $f->followed);
-        $followedAuthors = $user->followedAuthors()->withCount('books')->get();
+        $authorsLimit = (int) $request->input('authors_limit', 8);
+        $followingLimit = (int) $request->input('following_limit', 8);
+        $followersLimit = (int) $request->input('followers_limit', 8);
+
+        // 1. Autores seguidos
+        $followedAuthors = $user->followedAuthors()
+            ->withCount('books')
+            ->latest('author_followers.created_at')
+            ->take($authorsLimit)
+            ->get();
+        $followedAuthors->each(function ($a) {
+            $a->is_followed = true;
+        });
+
+        $totalAuthors = $user->followedAuthors()->count();
+        $hasMoreAuthors = $totalAuthors > $authorsLimit;
+
+        // 2. Usuarios que sigo
+        $followingRecords = $user->following()
+            ->with(['followed' => fn ($q) => $q->withCount(['followers', 'books'])])
+            ->latest()
+            ->take($followingLimit)
+            ->get();
+
+        $followingUsers = $followingRecords->pluck('followed')->filter()->values();
+        $followingUsers->each(function ($u) {
+            $u->is_following = true;
+        });
+        $totalFollowing = $user->following()->count();
+        $hasMoreFollowing = $totalFollowing > $followingLimit;
+
+        // 3. Usuarios que me siguen (seguidores)
+        $followersRecords = $user->followers()
+            ->with(['follower' => fn ($q) => $q->withCount(['followers', 'books'])])
+            ->latest()
+            ->take($followersLimit)
+            ->get();
+
+        $followerUsers = $followersRecords->pluck('follower')->filter()->values();
+
+        $followedIds = $user->following()->pluck('followed_id')->toArray();
+        $followerUsers->each(function ($u) use ($followedIds) {
+            $u->is_following = in_array($u->id, $followedIds);
+        });
+
+        $totalFollowers = $user->followers()->count();
+        $hasMoreFollowers = $totalFollowers > $followersLimit;
 
         return response()->json([
-            'followers' => UserResource::collection($followers),
-            'followers_count' => $user->followers()->count(),
-            'following' => UserResource::collection($following),
-            'following_count' => $user->following()->count(),
             'followed_authors' => AuthorResource::collection($followedAuthors),
+            'total_authors' => $totalAuthors,
+            'has_more_authors' => $hasMoreAuthors,
+
+            'following' => UserResource::collection($followingUsers),
+            'following_count' => $totalFollowing,
+            'has_more_following' => $hasMoreFollowing,
+
+            'followers' => UserResource::collection($followerUsers),
+            'followers_count' => $totalFollowers,
+            'has_more_followers' => $hasMoreFollowers,
         ]);
     }
 

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import apiClient from '../../api/client';
-import Pagination from '../../components/ui/Pagination';
-import RatingStars from '../../components/ui/RatingStars';
+import apiClient from '../../../api/client';
+import Pagination from '../../../components/ui/Pagination';
+import RatingStars from '../../../components/ui/RatingStars';
 
 /**
  * Moderación de reseñas — Tabla con eliminación por moderación.

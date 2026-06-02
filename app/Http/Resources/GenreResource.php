@@ -15,6 +15,8 @@ class GenreResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'books_count' => $this->when(isset($this->books_count), $this->books_count),
+            'top_books' => BookResource::collection($this->when(isset($this->top_books), $this->top_books)),
         ];
     }
 }

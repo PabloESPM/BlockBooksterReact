@@ -138,19 +138,29 @@ class UserProfileController extends Controller
 
         $viewer = $request->user();
         $isOwner = $viewer && $viewer->id === $user->id;
+        $type = $request->input('type', 'created');
 
-        $query = $user->lists()
-            ->with(['likes', 'user'])
-            ->withCount(['books', 'likes']);
+        if ($type === 'followed') {
+            // Listas SEGUIDAS por el usuario (solo las públicas, visibles para terceros)
+            $query = $user->likedLists()
+                ->where('visibility', 'public')
+                ->with(['user', 'books', 'likes'])
+                ->withCount(['books', 'likes'])
+                ->latest('list_likes.created_at');
+        } else {
+            $query = $user->lists()
+                ->with(['likes', 'user'])
+                ->withCount(['books', 'likes']);
 
-        // Aplicar filtros de visibilidad
-        if (!$isOwner) {
-            if ($viewer && $viewer->isFriend($user)) {
-                $query->whereIn('visibility', ['public', 'followers', 'friends']);
-            } elseif ($viewer && $viewer->isFollowing($user)) {
-                $query->whereIn('visibility', ['public', 'followers']);
-            } else {
-                $query->where('visibility', 'public');
+            // Aplicar filtros de visibilidad
+            if (!$isOwner) {
+                if ($viewer && $viewer->isFriend($user)) {
+                    $query->whereIn('visibility', ['public', 'followers', 'friends']);
+                } elseif ($viewer && $viewer->isFollowing($user)) {
+                    $query->whereIn('visibility', ['public', 'followers']);
+                } else {
+                    $query->where('visibility', 'public');
+                }
             }
         }
 
@@ -163,6 +173,38 @@ class UserProfileController extends Controller
                 'last_page' => $lists->lastPage(),
                 'per_page' => $lists->perPage(),
                 'total' => $lists->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * Autores seguidos por el usuario (paginados).
+     */
+    public function followedAuthors(Request $request, User $user): JsonResponse
+    {
+        if (!$this->canViewUserProfile($user, $request->user())) {
+            return response()->json(['message' => 'Este perfil es privado.'], 403);
+        }
+
+        $viewer = $request->user();
+        $authors = $user->followedAuthors()
+            ->withCount('books')
+            ->latest('author_followers.created_at')
+            ->paginate(12);
+
+        if ($viewer) {
+            foreach ($authors->items() as $author) {
+                $author->is_followed = $author->isFollowedBy($viewer);
+            }
+        }
+
+        return response()->json([
+            'data' => AuthorResource::collection($authors),
+            'meta' => [
+                'current_page' => $authors->currentPage(),
+                'last_page' => $authors->lastPage(),
+                'per_page' => $authors->perPage(),
+                'total' => $authors->total(),
             ],
         ]);
     }

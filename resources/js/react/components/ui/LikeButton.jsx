@@ -14,6 +14,7 @@ export default function LikeButton({
     id,
     initialLiked = false,
     initialCount = 0,
+    disabled = false,
 }) {
     const { isAuthenticated } = useAuth();
     const [liked, setLiked] = useState(initialLiked);
@@ -25,7 +26,14 @@ export default function LikeButton({
         list: `/lists/${id}/like`,
     };
 
-    const handleToggle = async () => {
+    const handleToggle = async (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        if (disabled) return;
+
         if (!isAuthenticated) {
             window.location.href = '/login';
             return;
@@ -43,15 +51,23 @@ export default function LikeButton({
         }
     };
 
+    if (disabled) {
+        return (
+            <div className="flex items-center gap-1 text-xs font-bold uppercase border-2 border-black px-3 py-1.5 bg-white text-black select-none">
+                <span>{liked ? '♥' : '♡'}</span>
+                <span>{count}</span>
+            </div>
+        );
+    }
+
     return (
         <button
             onClick={handleToggle}
             disabled={loading}
-            className={`flex items-center gap-1 text-xs font-bold uppercase border-2 border-black px-3 py-1.5 transition-all ${
-                liked
-                    ? 'bg-red-500 text-white'
-                    : 'bg-white text-black hover:-translate-y-0.5'
-            }`}
+            className={`flex items-center gap-1 text-xs font-bold uppercase border-2 border-black px-3 py-1.5 transition-all ${liked
+                    ? 'bg-red-500 text-white cursor-pointer'
+                    : 'bg-white text-black hover:-translate-y-0.5 cursor-pointer'
+                }`}
         >
             <span>{liked ? '♥' : '♡'}</span>
             <span>{count}</span>

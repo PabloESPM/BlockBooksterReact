@@ -10,6 +10,7 @@ export default function AddReviewModal() {
     const { isAuthenticated } = useAuth();
     const [show, setShow] = useState(false);
     const [bookIsbn, setBookIsbn] = useState('');
+    const [reviewId, setReviewId] = useState(null);
     const [title, setTitle] = useState('');
     const [rating, setRating] = useState(0);
     const [body, setBody] = useState('');
@@ -26,11 +27,22 @@ export default function AddReviewModal() {
                 return;
             }
             const isbn = e.detail?.bookId || '';
+            const existingReview = e.detail?.review || null;
+
             setBookIsbn(isbn);
-            setTitle('');
-            setRating(0);
-            setBody('');
             setErrors({});
+
+            if (existingReview) {
+                setReviewId(existingReview.id);
+                setTitle(existingReview.title || '');
+                setRating(existingReview.rating || 0);
+                setBody(existingReview.body || '');
+            } else {
+                setReviewId(null);
+                setTitle('');
+                setRating(0);
+                setBody('');
+            }
             setShow(true);
         };
 
@@ -55,6 +67,7 @@ export default function AddReviewModal() {
     const closeModal = () => {
         setShow(false);
         setBookIsbn('');
+        setReviewId(null);
         setTitle('');
         setRating(0);
         setBody('');
@@ -85,12 +98,20 @@ export default function AddReviewModal() {
         }
 
         try {
-            const res = await apiClient.post('/reviews', {
-                book_isbn: bookIsbn,
-                title: title || null,
-                rating: rating,
-                body: body,
-            });
+            if (reviewId) {
+                await apiClient.put(`/reviews/${reviewId}`, {
+                    title: title || null,
+                    rating: rating,
+                    body: body,
+                });
+            } else {
+                await apiClient.post('/reviews', {
+                    book_isbn: bookIsbn,
+                    title: title || null,
+                    rating: rating,
+                    body: body,
+                });
+            }
 
             closeModal();
             window.location.reload();
@@ -122,7 +143,9 @@ export default function AddReviewModal() {
                     &times;
                 </button>
 
-                <h2 className="text-xl font-black uppercase mb-6 font-display">Escribe una Reseña</h2>
+                <h2 className="text-xl font-black uppercase mb-6 font-display">
+                    {reviewId ? 'Editar Reseña' : 'Escribe una Reseña'}
+                </h2>
 
                 <form onSubmit={handleSubmit}>
                     {/* Título de la reseña */}
@@ -213,7 +236,7 @@ export default function AddReviewModal() {
                             {submitting && (
                                 <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
                             )}
-                            Publicar Reseña
+                            {reviewId ? 'Actualizar Reseña' : 'Publicar Reseña'}
                         </button>
                     </div>
                 </form>

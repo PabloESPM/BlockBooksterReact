@@ -387,6 +387,45 @@ class AdminController extends Controller
     }
 
     /* ──────────────────────────────────────────────────────────
+     *  LISTAS — Moderación
+     * ────────────────────────────────────────────────────────── */
+
+    public function lists(Request $request): JsonResponse
+    {
+        $query = FavList::with(['user'])->withCount(['books', 'likes']);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'ILIKE', "%{$search}%")
+                  ->orWhere('description', 'ILIKE', "%{$search}%")
+                  ->orWhereHas('user', function ($uq) use ($search) {
+                      $uq->where('name', 'ILIKE', "%{$search}%")
+                         ->orWhere('email', 'ILIKE', "%{$search}%");
+                  });
+            });
+        }
+
+        $lists = $query->latest()->paginate(15);
+
+        return response()->json([
+            'data' => FavListResource::collection($lists),
+            'meta' => [
+                'current_page' => $lists->currentPage(),
+                'last_page' => $lists->lastPage(),
+                'per_page' => $lists->perPage(),
+                'total' => $lists->total(),
+            ],
+        ]);
+    }
+
+    public function listDelete(FavList $list): JsonResponse
+    {
+        $list->delete();
+        return response()->json(['message' => '¡Lista eliminada por moderación!']);
+    }
+
+    /* ──────────────────────────────────────────────────────────
      *  AUTOCOMPLETADO de autores (para el formulario de libros)
      * ────────────────────────────────────────────────────────── */
 

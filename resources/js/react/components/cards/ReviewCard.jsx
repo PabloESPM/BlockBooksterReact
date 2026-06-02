@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import LikeButton from '../ui/LikeButton';
 
@@ -11,6 +12,19 @@ export default function ReviewCard({ review, showBook = true, showActions = fals
     const bookCoverUrl = review.book
         ? (review.book.cover_image || (review.book.cover_path ? `${window.location.origin}/storage/${review.book.cover_path}` : 'https://via.placeholder.com/50x75'))
         : 'https://via.placeholder.com/50x75';
+
+    // Estados para controlar los errores de carga de imágenes
+    const [bookCoverError, setBookCoverError] = useState(false);
+    const [avatarError, setAvatarError] = useState(false);
+
+    // Reiniciar los errores cuando cambian las URLs originales
+    useEffect(() => {
+        setBookCoverError(false);
+    }, [bookCoverUrl]);
+
+    useEffect(() => {
+        setAvatarError(false);
+    }, [avatarUrl]);
 
     // Formateador de fecha
     const formatDate = (dateString) => {
@@ -35,20 +49,22 @@ export default function ReviewCard({ review, showBook = true, showActions = fals
 
     return (
         <div className="neo-card flex flex-col h-full bg-[#FFA903]/10 p-6 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all">
-            
+
             {/* Encabezado de la Tarjeta (Libro o Usuario) */}
             <div className="flex items-start justify-between mb-4 border-b-2 border-black pb-4">
                 <div className="flex items-center min-w-0 flex-1">
                     {showBook && review.book ? (
                         <>
                             {/* Mostrar la portada del libro si showBook es true */}
-                            <Link to={`/books/${review.book_isbn || review.book?.isbn}`}>
+                            <Link to={`/books/${review.book_isbn || review.book?.isbn}`} className="mr-3 shrink-0 block">
                                 <img
-                                    src={bookCoverUrl}
+                                    src={bookCoverError ? 'https://via.placeholder.com/50x75' : bookCoverUrl}
                                     alt={review.book?.title || 'Libro'}
-                                    className="w-10 h-14 object-cover border-2 border-black shadow-[2px_2px_0px_#000] mr-3 shrink-0"
-                                    onError={(e) => {
-                                        e.target.src = 'https://via.placeholder.com/50x75';
+                                    className="w-10 h-14 object-cover border-2 border-black shadow-[2px_2px_0px_#000]"
+                                    onError={() => {
+                                        if (!bookCoverError) {
+                                            setBookCoverError(true);
+                                        }
                                     }}
                                 />
                             </Link>
@@ -74,13 +90,15 @@ export default function ReviewCard({ review, showBook = true, showActions = fals
                     ) : (
                         <>
                             {/* Mostrar el avatar del usuario por defecto */}
-                            <Link to={`/users/${review.user?.id}`}>
+                            <Link to={`/users/${review.user?.id}`} className="mr-3 shrink-0 block">
                                 <img
-                                    src={avatarUrl}
+                                    src={avatarError ? `https://ui-avatars.com/api/?name=${encodeURIComponent(review.user?.name || 'U')}&size=80&background=FFA903&color=000` : avatarUrl}
                                     alt={review.user?.name || 'Usuario'}
-                                    className="w-10 h-10 object-cover border-2 border-black shadow-[2px_2px_0px_#000] mr-3 shrink-0"
-                                    onError={(e) => {
-                                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(review.user?.name || 'U')}&size=80&background=FFA903&color=000`;
+                                    className="w-10 h-10 object-cover border-2 border-black shadow-[2px_2px_0px_#000]"
+                                    onError={() => {
+                                        if (!avatarError) {
+                                            setAvatarError(true);
+                                        }
                                     }}
                                 />
                             </Link>
@@ -112,6 +130,7 @@ export default function ReviewCard({ review, showBook = true, showActions = fals
                         id={review.id}
                         initialLiked={review.is_liked}
                         initialCount={review.likes_count ?? 0}
+                        disabled={!!review.is_owner}
                     />
                 </div>
             </div>

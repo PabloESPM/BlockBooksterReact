@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import apiClient from '../../api/client';
-import Pagination from '../../components/ui/Pagination';
+import apiClient from '../../../api/client';
+import Pagination from '../../../components/ui/Pagination';
 
 /**
  * Gestión de usuarios en admin — Tabla con búsqueda, bloqueo y cambio de rol.

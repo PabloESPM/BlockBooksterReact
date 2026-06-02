@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import apiClient from '../../api/client';
+import apiClient from '../../../api/client';
 
 /**
  * Formulario de creación/edición de autor.

@@ -241,6 +241,14 @@ export default function Navbar() {
                                             MIS RESEÑAS
                                         </Link>
                                         <Link
+                                            to="/dashboard/profile"
+                                            onClick={() => setUserMenuOpen(false)}
+                                            className="block px-4 py-2 text-sm text-black font-bold hover:bg-brand-yellow border-b border-gray-100"
+                                            role="menuitem"
+                                        >
+                                            EDITAR PERFIL
+                                        </Link>
+                                        <Link
                                             to="/dashboard/settings"
                                             onClick={() => setUserMenuOpen(false)}
                                             className="block px-4 py-2 text-sm text-black font-bold hover:bg-brand-yellow"
