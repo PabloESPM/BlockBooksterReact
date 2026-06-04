@@ -11,7 +11,9 @@ class CommunityController extends Controller
 {
     /**
      * Rankings de la comunidad: más seguidos, mejores curadores, más activos.
-     * Replica la lógica de UserController@community original.
+     *
+     * HAL-PERF-02: Sustituye los bucles con isFollowing() (N+1 queries) por
+     * una única query pre-cargando followedIds y resolviendo en memoria.
      */
     public function index(): JsonResponse
     {
@@ -38,21 +40,22 @@ class CommunityController extends Controller
 
         $viewer = auth('sanctum')->user();
         if ($viewer) {
-            foreach ($mostFollowed as $user) {
-                $user->is_following = $user->id === $viewer->id ? false : $viewer->isFollowing($user);
-            }
-            foreach ($topCurators as $user) {
-                $user->is_following = $user->id === $viewer->id ? false : $viewer->isFollowing($user);
-            }
-            foreach ($mostActive as $user) {
-                $user->is_following = $user->id === $viewer->id ? false : $viewer->isFollowing($user);
+            // HAL-PERF-02: Pre-cargar IDs seguidos en UNA sola query → resolver en memoria
+            // Evita hasta 15 queries de isFollowing() en los tres bucles
+            $followedIds = $viewer->following()->pluck('followed_id')->toArray();
+
+            $allUsers = $mostFollowed->merge($topCurators)->merge($mostActive)->unique('id');
+            foreach ($allUsers as $user) {
+                $user->is_following = $user->id === $viewer->id
+                    ? false
+                    : in_array($user->id, $followedIds);
             }
         }
 
         return response()->json([
             'most_followed' => UserResource::collection($mostFollowed),
-            'top_curators' => UserResource::collection($topCurators),
-            'most_active' => UserResource::collection($mostActive),
+            'top_curators'  => UserResource::collection($topCurators),
+            'most_active'   => UserResource::collection($mostActive),
         ]);
     }
 }

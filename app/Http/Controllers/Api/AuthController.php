@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -60,13 +61,14 @@ class AuthController extends Controller
     public function register(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users|confirmed',
-            'password' => 'required|string|min:8',
+            'name'          => 'required|string|max:255',
+            'email'         => 'required|string|email|max:255|unique:users|confirmed',
+            // HAL-SEC-12: contraseña mínima con mayúsculas, minúsculas y números
+            'password'      => ['required', 'string', Password::min(8)->mixedCase()->numbers()],
             'date_of_birth' => 'required|date',
-            'gender' => 'required|in:Male,Female,Other',
-            'country_id' => 'required|exists:countries,id',
-            'telephone' => 'required|string|max:20',
+            'gender'        => 'required|in:Male,Female,Other',
+            'country_id'    => 'required|exists:countries,id',
+            'telephone'     => 'required|string|max:20',
         ]);
 
         $user = User::create([
@@ -130,23 +132,26 @@ class AuthController extends Controller
      */
     public function sendResetLinkEmail(Request $request): JsonResponse
     {
+        // HAL-AUTH-05: validar formato pero NO usar 'exists:users,email'
+        // para evitar que atacantes enumeren qué emails están registrados.
         $request->validate([
-            'email' => 'required|email|exists:users,email'
+            'email' => 'required|email'
         ], [
             'email.required' => 'El correo electrónico es obligatorio.',
-            'email.email' => 'Introduce un correo electrónico válido.',
-            'email.exists' => 'No encontramos ningún usuario con ese correo electrónico.'
+            'email.email'    => 'Introduce un correo electrónico válido.',
         ]);
 
-        $status = \Illuminate\Support\Facades\Password::broker()->sendResetLink(
+        // Intentar enviar el enlace; si el email no existe, Password::broker() lo
+        // gestiona internamente y devuelve INVALID_USER, pero nosotros respondemos
+        // siempre con el mismo mensaje genérico para no revelar información.
+        \Illuminate\Support\Facades\Password::broker()->sendResetLink(
             $request->only('email')
         );
 
-        if ($status === \Illuminate\Support\Facades\Password::RESET_LINK_SENT) {
-            return response()->json(['message' => 'Te hemos enviado por correo el enlace para restablecer tu contraseña.']);
-        }
-
-        return response()->json(['error' => 'No se pudo enviar el correo de recuperación.'], 500);
+        // Respuesta siempre idéntica, independientemente de si el email existe o no
+        return response()->json([
+            'message' => 'Si ese correo está registrado, recibirás un enlace para restablecer tu contraseña en breve.',
+        ]);
     }
 
     /**

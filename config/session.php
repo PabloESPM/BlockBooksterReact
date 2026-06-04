@@ -47,7 +47,10 @@ return [
     |
     */
 
-    'encrypt' => env('SESSION_ENCRYPT', false),
+    // HAL-SEC-09: default true — las sesiones se cifran antes de almacenarse.
+    // Para entornos locales sin impacto en rendimiento, se puede establecer SESSION_ENCRYPT=false en .env
+    'encrypt' => env('SESSION_ENCRYPT', true),
+
 
     /*
     |--------------------------------------------------------------------------

@@ -27,7 +27,9 @@ return [
 
     'exposed_headers' => [],
 
-    'max_age' => 0,
+    // HAL-SEC-10: 3600s para que el navegador cachee la respuesta preflight OPTIONS durante 1 hora
+    'max_age' => 3600,
+
 
     'supports_credentials' => true,
 

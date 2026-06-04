@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreReviewRequest;
+use App\Http\Requests\UpdateReviewRequest;
 use App\Http\Resources\ReviewResource;
 use App\Models\Review;
 use App\Models\ReviewLike;
@@ -13,16 +15,11 @@ class ReviewController extends Controller
 {
     /**
      * Crear una nueva reseña (o actualizar si ya existe para ese libro).
-     * Replica la lógica de ReviewController@store original.
+     * HAL-QA-01: validación centralizada en StoreReviewRequest.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreReviewRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'book_isbn' => ['required', 'string', 'exists:books,isbn'],
-            'title' => ['nullable', 'string', 'max:255'],
-            'rating' => ['required', 'numeric', 'min:1', 'max:5'],
-            'body' => ['required', 'string', 'max:1000'],
-        ]);
+        $validated = $request->validated();
 
         // Verificar si ya existe una reseña de este usuario para este libro
         $exists = Review::where('user_id', $request->user()->id)
@@ -32,76 +29,72 @@ class ReviewController extends Controller
         if ($exists) {
             return response()->json([
                 'message' => 'Ya has escrito una reseña para este libro.',
-                'errors' => [
-                    'book_isbn' => ['Ya has escrito una reseña para este libro.']
-                ]
+                'errors'  => [
+                    'book_isbn' => ['Ya has escrito una reseña para este libro.'],
+                ],
             ], 422);
         }
 
         $review = $request->user()->reviews()->create([
             'book_isbn' => $validated['book_isbn'],
-            'title' => $validated['title'] ?? null,
-            'body' => $validated['body'],
+            'title'     => $validated['title'] ?? null,
+            'body'      => $validated['body'],
         ]);
 
         // Guardar el rating en book_user (tabla separada)
         $request->user()->books()->updateOrCreate(
             ['book_isbn' => $validated['book_isbn']],
-            ['rating' => $validated['rating']]
+            ['rating'    => $validated['rating']]
         );
 
         $review->load(['user', 'likes']);
         $review->loadCount('likes');
 
         return response()->json([
-            'data' => new ReviewResource($review),
+            'data'    => new ReviewResource($review),
             'message' => '¡Reseña publicada correctamente!',
         ], 201);
     }
 
     /**
      * Actualizar una reseña existente.
+     * HAL-SEC-04: autorización via ReviewPolicy.
+     * HAL-QA-01: validación centralizada en UpdateReviewRequest.
      */
-    public function update(Request $request, Review $review): JsonResponse
+    public function update(UpdateReviewRequest $request, Review $review): JsonResponse
     {
-        if ($review->user_id !== $request->user()->id) {
-            abort(403, 'No tienes permiso para editar esta reseña.');
-        }
+        // HAL-SEC-04: Policy centralizada (sustituye el if inline)
+        $this->authorize('update', $review);
 
-        $validated = $request->validate([
-            'title' => ['nullable', 'string', 'max:255'],
-            'rating' => ['required', 'numeric', 'min:1', 'max:5'],
-            'body' => ['required', 'string', 'max:1000'],
-        ]);
+        $validated = $request->validated();
 
         $review->update([
             'title' => $validated['title'] ?? null,
-            'body' => $validated['body'],
+            'body'  => $validated['body'],
         ]);
 
         // Actualizar rating en book_user
         $request->user()->books()->updateOrCreate(
             ['book_isbn' => $review->book_isbn],
-            ['rating' => $validated['rating']]
+            ['rating'    => $validated['rating']]
         );
 
         $review->load(['user', 'likes']);
         $review->loadCount('likes');
 
         return response()->json([
-            'data' => new ReviewResource($review),
+            'data'    => new ReviewResource($review),
             'message' => '¡Reseña actualizada correctamente!',
         ]);
     }
 
     /**
      * Eliminar una reseña.
+     * HAL-SEC-04: autorización via ReviewPolicy.
      */
     public function destroy(Request $request, Review $review): JsonResponse
     {
-        if ($review->user_id !== $request->user()->id) {
-            abort(403, 'No tienes permiso para eliminar esta reseña.');
-        }
+        $this->authorize('delete', $review);
 
         $review->delete();
 
@@ -112,9 +105,12 @@ class ReviewController extends Controller
 
     /**
      * Toggle like de una reseña.
+     * HAL-SEC-04: autorización via ReviewPolicy.
      */
     public function toggleLike(Request $request, Review $review): JsonResponse
     {
+        $this->authorize('toggleLike', $review);
+
         $user = $request->user();
         $like = ReviewLike::where('user_id', $user->id)
             ->where('review_id', $review->id)
@@ -125,14 +121,14 @@ class ReviewController extends Controller
             $status = 'unliked';
         } else {
             ReviewLike::create([
-                'user_id' => $user->id,
+                'user_id'   => $user->id,
                 'review_id' => $review->id,
             ]);
             $status = 'liked';
         }
 
         return response()->json([
-            'status' => $status,
+            'status'      => $status,
             'likes_count' => $review->likes()->count(),
         ]);
     }

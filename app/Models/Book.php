@@ -10,9 +10,24 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Book extends Model
 {
     use HasFactory;
+
     protected $primaryKey = 'isbn';
     protected $keyType = 'string';
     public $incrementing = false;
+
+    // HAL-QA-02: $fillable explícito para evitar fallos silenciosos de mass assignment
+    protected $fillable = [
+        'isbn',
+        'title',
+        'description',
+        'genre_id',
+        'language_id',
+        'publisher',
+        'publication_year',
+        'number_of_pages',
+        'cover_path',
+    ];
+
 
     public function authors()
     {

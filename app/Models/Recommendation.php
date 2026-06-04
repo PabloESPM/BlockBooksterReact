@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\Model;
 class Recommendation extends Model
 {
     use HasFactory;
-    protected $dates = ['read_at'];
+    // HAL-QA-03: $dates está deprecado desde Laravel 10; usar $casts
+    protected $casts = ['read_at' => 'datetime'];
+
 
     public function from()
     {

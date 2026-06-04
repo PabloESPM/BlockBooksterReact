@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DestroyAccountRequest;
+use App\Http\Requests\UpdateSettingsRequest;
 use App\Http\Resources\UserResource;
 use App\Http\Resources\ReviewResource;
 use App\Http\Resources\FavListResource;
@@ -23,17 +25,28 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
+        // HAL-PERF-03: Consolida 7 queries de conteo en una sola llamada loadCount
+        $user->loadCount([
+            'reviews',
+            'lists',
+            'followers',
+            'following',
+            'books as read_books_count'    => fn ($q) => $q->where('status', 'read'),
+            'books as reading_books_count' => fn ($q) => $q->where('status', 'reading'),
+            'books as pending_books_count' => fn ($q) => $q->where('status', 'pending'),
+        ]);
+
         $stats = [
-            'read_books' => $user->books()->where('status', 'read')->count(),
-            'reading_books' => $user->books()->where('status', 'reading')->count(),
-            'pending_books' => $user->books()->where('status', 'pending')->count(),
-            'lists' => $user->lists()->count(),
-            'reviews' => $user->reviews()->count(),
-            'followers' => $user->followers()->count(),
-            'following' => $user->following()->count(),
+            'read_books'    => $user->read_books_count,
+            'reading_books' => $user->reading_books_count,
+            'pending_books' => $user->pending_books_count,
+            'lists'         => $user->lists_count,
+            'reviews'       => $user->reviews_count,
+            'followers'     => $user->followers_count,
+            'following'     => $user->following_count,
         ];
 
-        // 1. Libros en lectura
+        // HAL-PERF-03: Una sola query por coleccion usando eager loading
         $librosEnLectura = $user->books()
             ->with(['book.authors'])
             ->where('status', 'reading')
@@ -41,7 +54,6 @@ class DashboardController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        // 2. Actividad reciente
         $actividadReciente = $user->books()
             ->with('book')
             ->whereIn('status', ['read', 'reading'])
@@ -49,7 +61,6 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        // 3. Libros para leer (pending)
         $librosParaLeerColeccion = $user->books()
             ->with('book.authors')
             ->where('status', 'pending')
@@ -57,7 +68,6 @@ class DashboardController extends Controller
             ->limit(6)
             ->get();
 
-        // 4. Libros leídos
         $librosLeidosColeccion = $user->books()
             ->with('book.authors')
             ->where('status', 'read')
@@ -66,22 +76,22 @@ class DashboardController extends Controller
             ->limit(6)
             ->get();
 
-        $formatBookUser = function($item) {
+        $formatBookUser = function ($item) {
             return [
-                'id' => $item->id,
-                'status' => $item->status,
-                'started_at' => $item->started_at?->toIso8601String(),
+                'id'          => $item->id,
+                'status'      => $item->status,
+                'started_at'  => $item->started_at?->toIso8601String(),
                 'finished_at' => $item->finished_at?->toIso8601String(),
-                'book' => $item->book ? new BookResource($item->book) : null,
+                'book'        => $item->book ? new BookResource($item->book) : null,
             ];
         };
 
         return response()->json([
-            'stats' => $stats,
-            'reading_books' => $librosEnLectura->map($formatBookUser),
-            'recent_activity' => $actividadReciente->map($formatBookUser),
+            'stats'              => $stats,
+            'reading_books'      => $librosEnLectura->map($formatBookUser),
+            'recent_activity'    => $actividadReciente->map($formatBookUser),
             'pending_collection' => $librosParaLeerColeccion->map($formatBookUser),
-            'read_collection' => $librosLeidosColeccion->map($formatBookUser),
+            'read_collection'    => $librosLeidosColeccion->map($formatBookUser),
         ]);
     }
 
@@ -206,7 +216,7 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        $authorsLimit = (int) $request->input('authors_limit', 8);
+        $authorsLimit  = (int) $request->input('authors_limit', 8);
         $followingLimit = (int) $request->input('following_limit', 8);
         $followersLimit = (int) $request->input('followers_limit', 8);
 
@@ -216,11 +226,8 @@ class DashboardController extends Controller
             ->latest('author_followers.created_at')
             ->take($authorsLimit)
             ->get();
-        $followedAuthors->each(function ($a) {
-            $a->is_followed = true;
-        });
-
-        $totalAuthors = $user->followedAuthors()->count();
+        $followedAuthors->each(fn ($a) => $a->is_followed = true);
+        $totalAuthors   = $user->followedAuthors()->count();
         $hasMoreAuthors = $totalAuthors > $authorsLimit;
 
         // 2. Usuarios que sigo
@@ -229,42 +236,37 @@ class DashboardController extends Controller
             ->latest()
             ->take($followingLimit)
             ->get();
-
         $followingUsers = $followingRecords->pluck('followed')->filter()->values();
-        $followingUsers->each(function ($u) {
-            $u->is_following = true;
-        });
-        $totalFollowing = $user->following()->count();
+        $followingUsers->each(fn ($u) => $u->is_following = true);
+        $totalFollowing  = $user->following()->count();
         $hasMoreFollowing = $totalFollowing > $followingLimit;
 
-        // 3. Usuarios que me siguen (seguidores)
+        // 3. Seguidores — HAL-PERF-04: pre-carga followedIds en memoria para evitar N+1
         $followersRecords = $user->followers()
             ->with(['follower' => fn ($q) => $q->withCount(['followers', 'books'])])
             ->latest()
             ->take($followersLimit)
             ->get();
-
         $followerUsers = $followersRecords->pluck('follower')->filter()->values();
 
-        $followedIds = $user->following()->pluck('followed_id')->toArray();
-        $followerUsers->each(function ($u) use ($followedIds) {
-            $u->is_following = in_array($u->id, $followedIds);
-        });
+        // Pre-cargar IDs seguidos en un solo query y resolver en memoria
+        $followedIds = $followingRecords->pluck('followed_id')->toArray();
+        $followerUsers->each(fn ($u) => $u->is_following = in_array($u->id, $followedIds));
 
-        $totalFollowers = $user->followers()->count();
+        $totalFollowers  = $user->followers()->count();
         $hasMoreFollowers = $totalFollowers > $followersLimit;
 
         return response()->json([
-            'followed_authors' => AuthorResource::collection($followedAuthors),
-            'total_authors' => $totalAuthors,
-            'has_more_authors' => $hasMoreAuthors,
+            'followed_authors'  => AuthorResource::collection($followedAuthors),
+            'total_authors'     => $totalAuthors,
+            'has_more_authors'  => $hasMoreAuthors,
 
-            'following' => UserResource::collection($followingUsers),
-            'following_count' => $totalFollowing,
+            'following'         => UserResource::collection($followingUsers),
+            'following_count'   => $totalFollowing,
             'has_more_following' => $hasMoreFollowing,
 
-            'followers' => UserResource::collection($followerUsers),
-            'followers_count' => $totalFollowers,
+            'followers'         => UserResource::collection($followerUsers),
+            'followers_count'   => $totalFollowers,
             'has_more_followers' => $hasMoreFollowers,
         ]);
     }
@@ -281,25 +283,15 @@ class DashboardController extends Controller
 
     /**
      * Actualizar email, teléfono y/o contraseña.
+     * HAL-AUTH-04: exige current_password antes de modificar credenciales sensibles.
      */
-    public function updateSettings(Request $request): JsonResponse
+    public function updateSettings(UpdateSettingsRequest $request): JsonResponse
     {
-        $user = $request->user();
+        $user      = $request->user();
+        $validated = $request->validated();
 
-        $validated = $request->validate([
-            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
-            'telephone' => 'nullable|string|max:20',
-            'password' => 'nullable|string|min:8|confirmed',
-        ], [
-            'email.required' => 'El correo electrónico es obligatorio.',
-            'email.email' => 'Introduce un correo electrónico válido.',
-            'email.unique' => 'Este correo electrónico ya está en uso por otra cuenta.',
-            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
-            'password.confirmed' => 'Las contraseñas no coinciden.',
-        ]);
-
-        $user->email = $validated['email'];
-        $user->telephone = $validated['telephone'];
+        $user->email     = $validated['email'];
+        $user->telephone = $validated['telephone'] ?? $user->telephone;
 
         if (!empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
@@ -308,7 +300,7 @@ class DashboardController extends Controller
         $user->save();
 
         return response()->json([
-            'data' => new UserResource($user),
+            'data'    => new UserResource($user),
             'message' => 'Credenciales actualizadas correctamente.',
         ]);
     }
@@ -333,8 +325,9 @@ class DashboardController extends Controller
 
     /**
      * Eliminar permanentemente la cuenta del usuario.
+     * HAL-AUTH-03: exige current_password para confirmar la identidad del propietario.
      */
-    public function destroyAccount(Request $request): JsonResponse
+    public function destroyAccount(DestroyAccountRequest $request): JsonResponse
     {
         $user = $request->user();
 

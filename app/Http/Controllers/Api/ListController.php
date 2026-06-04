@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreListRequest;
+use App\Http\Requests\UpdateListRequest;
 use App\Http\Resources\FavListResource;
-use App\Http\Resources\BookResource;
 use App\Models\FavList;
 use App\Models\ListLike;
-use App\Models\User;
+use App\Traits\ChecksProfileVisibility;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ListController extends Controller
 {
+    // HAL-AUTH-02: Trait centralizado que elimina la duplicación de canViewUserProfile()
+    use ChecksProfileVisibility;
+
     /**
      * Listado de listas públicas con paginación.
      */
@@ -22,7 +26,7 @@ class ListController extends Controller
             ->with([
                 'user',
                 'likes',
-                'books' => fn($q) => $q->take(4), // Vista previa de portadas
+                'books' => fn($q) => $q->take(4),
             ])
             ->withCount(['books', 'likes'])
             ->latest()
@@ -32,9 +36,9 @@ class ListController extends Controller
             'data' => FavListResource::collection($lists),
             'meta' => [
                 'current_page' => $lists->currentPage(),
-                'last_page' => $lists->lastPage(),
-                'per_page' => $lists->perPage(),
-                'total' => $lists->total(),
+                'last_page'    => $lists->lastPage(),
+                'per_page'     => $lists->perPage(),
+                'total'        => $lists->total(),
             ],
         ]);
     }
@@ -45,24 +49,20 @@ class ListController extends Controller
     public function show(Request $request, FavList $list): JsonResponse
     {
         $viewer = $request->user();
-        $owner = $list->user;
+        $owner  = $list->user;
 
-        // 1. Verificar si el creador de la lista tiene perfil privado y el visitante puede ver su perfil
+        // Verificar visibilidad del perfil del propietario (Trait centralizado)
         if (!$this->canViewUserProfile($owner, $viewer)) {
             abort(403, 'No tienes permiso para ver esta lista.');
         }
 
-        // 2. Verificar la visibilidad de la propia lista
         $isOwner = $viewer && $viewer->id === $list->user_id;
-        $canView = false;
-
-        if ($list->visibility === 'public') {
-            $canView = true;
-        } elseif ($list->visibility === 'private') {
-            $canView = $isOwner;
-        } elseif ($list->visibility === 'friends') {
-            $canView = $isOwner || ($viewer && $viewer->isFriend($owner));
-        }
+        $canView = match ($list->visibility) {
+            'public'  => true,
+            'private' => $isOwner,
+            'friends' => $isOwner || ($viewer && $viewer->isFriend($owner)),
+            default   => false,
+        };
 
         if (!$canView) {
             abort(403, 'No tienes permiso para ver esta lista.');
@@ -78,54 +78,43 @@ class ListController extends Controller
 
     /**
      * Crear una nueva lista.
+     * HAL-QA-01: validación centralizada en StoreListRequest.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreListRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:1000'],
-            'visibility' => ['required', 'in:public,private,friends'],
-        ]);
-
-        $list = $request->user()->lists()->create($validated);
+        $list = $request->user()->lists()->create($request->validated());
 
         return response()->json([
-            'data' => new FavListResource($list),
+            'data'    => new FavListResource($list),
             'message' => '¡Lista creada correctamente!',
         ], 201);
     }
 
     /**
      * Actualizar una lista existente.
+     * HAL-SEC-04: autorización via FavListPolicy.
+     * HAL-QA-01: validación centralizada en UpdateListRequest.
      */
-    public function update(Request $request, FavList $list): JsonResponse
+    public function update(UpdateListRequest $request, FavList $list): JsonResponse
     {
-        if ($list->user_id !== $request->user()->id) {
-            abort(403, 'No tienes permiso para editar esta lista.');
-        }
+        // HAL-SEC-04: Policy centralizada
+        $this->authorize('update', $list);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:1000'],
-            'visibility' => ['required', 'in:public,private,friends'],
-        ]);
-
-        $list->update($validated);
+        $list->update($request->validated());
 
         return response()->json([
-            'data' => new FavListResource($list->fresh()),
+            'data'    => new FavListResource($list->fresh()),
             'message' => '¡Lista actualizada correctamente!',
         ]);
     }
 
     /**
      * Eliminar una lista.
+     * HAL-SEC-04: autorización via FavListPolicy.
      */
     public function destroy(Request $request, FavList $list): JsonResponse
     {
-        if ($list->user_id !== $request->user()->id) {
-            abort(403, 'No tienes permiso para eliminar esta lista.');
-        }
+        $this->authorize('delete', $list);
 
         $list->delete();
 
@@ -136,12 +125,11 @@ class ListController extends Controller
 
     /**
      * Añadir un libro a una lista.
+     * HAL-SEC-04: autorización via FavListPolicy.
      */
     public function attachBook(Request $request, FavList $list): JsonResponse
     {
-        if ($list->user_id !== $request->user()->id) {
-            abort(403, 'No tienes permiso para modificar esta lista.');
-        }
+        $this->authorize('attachBook', $list);
 
         $request->validate([
             'book_isbn' => 'required|exists:books,isbn',
@@ -168,31 +156,34 @@ class ListController extends Controller
     public function storeAndAttach(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name'        => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
-            'visibility' => ['required', 'in:public,private,friends'],
-            'book_isbn' => 'required|exists:books,isbn',
+            'visibility'  => ['required', 'in:public,private,friends'],
+            'book_isbn'   => 'required|exists:books,isbn',
         ]);
 
         $list = $request->user()->lists()->create([
-            'name' => $validated['name'],
+            'name'        => $validated['name'],
             'description' => $validated['description'] ?? null,
-            'visibility' => $validated['visibility'],
+            'visibility'  => $validated['visibility'],
         ]);
 
         $list->books()->attach($validated['book_isbn'], ['added_at' => now()]);
 
         return response()->json([
-            'data' => new FavListResource($list),
+            'data'    => new FavListResource($list),
             'message' => '¡Lista creada y libro añadido correctamente!',
         ], 201);
     }
 
     /**
      * Toggle like de una lista.
+     * HAL-SEC-04: autorización via FavListPolicy.
      */
     public function toggleLike(Request $request, FavList $list): JsonResponse
     {
+        $this->authorize('toggleLike', $list);
+
         $user = $request->user();
         $like = ListLike::where('user_id', $user->id)
             ->where('list_id', $list->id)
@@ -210,24 +201,8 @@ class ListController extends Controller
         }
 
         return response()->json([
-            'status' => $status,
+            'status'      => $status,
             'likes_count' => $list->likes()->count(),
         ]);
-    }
-
-    /**
-     * Comprueba si el visitante tiene permiso para ver el contenido del perfil de un usuario.
-     */
-    private function canViewUserProfile(User $user, ?User $viewer): bool
-    {
-        $isOwner = $viewer && $viewer->id === $user->id;
-
-        return match ($user->profile_visibility) {
-            'public' => true,
-            'followers' => $isOwner || ($viewer && $viewer->isFollowing($user)),
-            'friends' => $isOwner || ($viewer && $viewer->isFriend($user)),
-            'private' => (bool) $isOwner,
-            default => true,
-        };
     }
 }

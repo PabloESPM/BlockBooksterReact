@@ -13,18 +13,23 @@ use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\FilterDataController;
+use App\Http\Controllers\Api\AdminController;
 
 /*
 |--------------------------------------------------------------------------
-| Autenticación
+| Autenticación — HAL-SEC-03: Rate Limiting en endpoints críticos
 |--------------------------------------------------------------------------
 */
 Route::prefix('auth')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
-    Route::post('/register', [AuthController::class, 'register']);
+    // HAL-SEC-03: Throttle 'auth' = 8 req/min por IP (definido en AppServiceProvider)
+    Route::middleware('throttle:auth')->group(function () {
+        Route::post('/login', [AuthController::class, 'login']);
+        Route::post('/register', [AuthController::class, 'register']);
+        Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail']);
+        Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+    });
+
     Route::get('/countries', [AuthController::class, 'countries']);
-    Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail']);
-    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/user', [AuthController::class, 'user']);
@@ -34,10 +39,10 @@ Route::prefix('auth')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Home (página principal)
+| Home (página principal) — HAL-SEC-03: Throttle general
 |--------------------------------------------------------------------------
 */
-Route::get('/home', [HomeController::class, 'index']);
+Route::middleware('throttle:api')->get('/home', [HomeController::class, 'index']);
 
 /*
 |--------------------------------------------------------------------------
@@ -85,10 +90,11 @@ Route::get('/community', [CommunityController::class, 'index']);
 
 /*
 |--------------------------------------------------------------------------
-| Búsqueda global (público)
+| Búsqueda global — HAL-SEC-03: Throttle específico para búsquedas
 |--------------------------------------------------------------------------
 */
-Route::get('/search', [SearchController::class, 'search']);
+// HAL-SEC-03: Throttle 'search' = 30 req/min (definido en AppServiceProvider)
+Route::middleware('throttle:search')->get('/search', [SearchController::class, 'search']);
 
 /*
 |--------------------------------------------------------------------------
@@ -102,10 +108,10 @@ Route::get('/countries/all', [FilterDataController::class, 'allCountries']);
 
 /*
 |--------------------------------------------------------------------------
-| Rutas protegidas (requieren autenticación)
+| Rutas protegidas (requieren autenticación) — HAL-SEC-03: Throttle API
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 
     // ── Acciones sociales ──
     Route::post('/users/{user}/follow', [FollowController::class, 'toggleUser']);
@@ -131,7 +137,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('dashboard')->group(function () {
         Route::get('/', [DashboardController::class, 'index']);
         Route::get('/profile', [DashboardController::class, 'profile']);
-        Route::post('/profile', [DashboardController::class, 'updateProfile']); // POST para multipart/form-data
+        Route::post('/profile', [DashboardController::class, 'updateProfile']);
         Route::get('/lists', [DashboardController::class, 'lists']);
         Route::get('/reviews', [DashboardController::class, 'reviews']);
         Route::get('/social', [DashboardController::class, 'social']);
@@ -144,36 +150,44 @@ Route::middleware('auth:sanctum')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Panel de Administración (requiere autenticación + rol admin/worker)
+| Panel de Administración — HAL-SEC-06: Separación de roles admin vs worker
 |--------------------------------------------------------------------------
 */
+
+// ── Operaciones de solo lectura y moderación (admin + worker) ──────────────
 Route::middleware(['auth:sanctum', 'role:admin,worker'])->prefix('admin')->group(function () {
-    Route::get('/', [\App\Http\Controllers\Api\AdminController::class, 'dashboard']);
+    Route::get('/', [AdminController::class, 'dashboard']);
 
     // Libros
-    Route::get('/books', [\App\Http\Controllers\Api\AdminController::class, 'books']);
-    Route::get('/books/{book}', [\App\Http\Controllers\Api\AdminController::class, 'bookShow']);
-    Route::post('/books', [\App\Http\Controllers\Api\AdminController::class, 'bookSave']);
-    Route::delete('/books/{book}', [\App\Http\Controllers\Api\AdminController::class, 'bookDelete']);
+    Route::get('/books', [AdminController::class, 'books']);
+    Route::get('/books/{book}', [AdminController::class, 'bookShow']);
+    Route::post('/books', [AdminController::class, 'bookSave']);
+    Route::delete('/books/{book}', [AdminController::class, 'bookDelete']);
 
     // Autores
-    Route::get('/authors', [\App\Http\Controllers\Api\AdminController::class, 'authors']);
-    Route::get('/authors/{author}', [\App\Http\Controllers\Api\AdminController::class, 'authorShow']);
-    Route::post('/authors', [\App\Http\Controllers\Api\AdminController::class, 'authorSave']);
-    Route::delete('/authors/{author}', [\App\Http\Controllers\Api\AdminController::class, 'authorDelete']);
-    Route::get('/authors-search', [\App\Http\Controllers\Api\AdminController::class, 'authorSearch']);
+    Route::get('/authors', [AdminController::class, 'authors']);
+    Route::get('/authors/{author}', [AdminController::class, 'authorShow']);
+    Route::post('/authors', [AdminController::class, 'authorSave']);
+    Route::delete('/authors/{author}', [AdminController::class, 'authorDelete']);
+    Route::get('/authors-search', [AdminController::class, 'authorSearch']);
 
-    // Usuarios
-    Route::get('/users', [\App\Http\Controllers\Api\AdminController::class, 'users']);
-    Route::get('/users/{user}', [\App\Http\Controllers\Api\AdminController::class, 'userShow']);
-    Route::post('/users/{user}/toggle-block', [\App\Http\Controllers\Api\AdminController::class, 'userToggleBlock']);
-    Route::post('/users/{user}/change-role', [\App\Http\Controllers\Api\AdminController::class, 'userChangeRole']);
+    // Usuarios (lectura)
+    Route::get('/users', [AdminController::class, 'users']);
+    Route::get('/users/{user}', [AdminController::class, 'userShow']);
 
     // Reseñas (moderación)
-    Route::get('/reviews', [\App\Http\Controllers\Api\AdminController::class, 'reviews']);
-    Route::delete('/reviews/{review}', [\App\Http\Controllers\Api\AdminController::class, 'reviewDelete']);
+    Route::get('/reviews', [AdminController::class, 'reviews']);
+    Route::delete('/reviews/{review}', [AdminController::class, 'reviewDelete']);
 
     // Listas (moderación)
-    Route::get('/lists', [\App\Http\Controllers\Api\AdminController::class, 'lists']);
-    Route::delete('/lists/{list}', [\App\Http\Controllers\Api\AdminController::class, 'listDelete']);
+    Route::get('/lists', [AdminController::class, 'lists']);
+    Route::delete('/lists/{list}', [AdminController::class, 'listDelete']);
+});
+
+// ── Operaciones críticas de gestión de usuarios (SOLO admin) ───────────────
+// HAL-SEC-06: toggle-block y change-role requieren role:admin (no worker)
+// HAL-SEC-05: Los checks de auto-demotion están en AdminController
+Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
+    Route::post('/users/{user}/toggle-block', [AdminController::class, 'userToggleBlock']);
+    Route::post('/users/{user}/change-role', [AdminController::class, 'userChangeRole']);
 });

@@ -10,7 +10,9 @@ class FavList extends Model
 {
     use HasFactory;
     protected $table = 'fav_lists';
-    protected $fillable = ['user_id', 'name', 'description', 'visibility'];
+    // HAL-AUTH-01: user_id eliminado de $fillable para evitar mass-assignment spoofing
+    protected $fillable = ['name', 'description', 'visibility'];
+
 
     public function user()
     {

@@ -66,9 +66,12 @@ class AdminController extends Controller
             $query->where('genre_id', $request->genre_id);
         }
 
-        // Ordenación
-        $sortColumn = $request->input('sort', 'created_at');
-        $sortDir = $request->input('direction', 'desc');
+        // HAL-SEC-01: whitelist para prevenir SQL injection vía orderBy dinámico
+        $allowedSortColumns = ['title', 'isbn', 'publication_year', 'created_at', 'number_of_pages'];
+        $sortColumn = in_array($request->input('sort'), $allowedSortColumns, true)
+            ? $request->input('sort')
+            : 'created_at';
+        $sortDir = $request->input('direction') === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortColumn, $sortDir);
 
         $books = $query->paginate(15);
@@ -331,8 +334,17 @@ class AdminController extends Controller
         return response()->json(['data' => new UserResource($user)]);
     }
 
-    public function userToggleBlock(User $user): JsonResponse
+    public function userToggleBlock(Request $request, User $user): JsonResponse
     {
+        // HAL-SEC-05: Impedir que un admin se bloquee a sí mismo
+        if ($user->id === $request->user()->id) {
+            return response()->json(['message' => 'No puedes bloquearte a ti mismo.'], 403);
+        }
+        // HAL-SEC-06: Solo admins pueden bloquear/desbloquear usuarios
+        if ($request->user()->type !== 'admin') {
+            return response()->json(['message' => 'Solo los administradores pueden bloquear usuarios.'], 403);
+        }
+
         $user->is_blocked = !$user->is_blocked;
         $user->save();
 
@@ -346,6 +358,16 @@ class AdminController extends Controller
 
     public function userChangeRole(Request $request, User $user): JsonResponse
     {
+        // HAL-SEC-05: Impedir que un admin cambie su propio rol
+        if ($user->id === $request->user()->id) {
+            return response()->json(['message' => 'No puedes cambiar tu propio rol.'], 403);
+        }
+        // HAL-SEC-06: Solo admins pueden cambiar roles (no workers)
+        if ($request->user()->type !== 'admin') {
+            return response()->json(['message' => 'Solo los administradores pueden cambiar roles de usuario.'], 403);
+        }
+        // HAL-SEC-06: Impedir que se promueva a admin a través de este endpoint por workers
+        // (ya cubierto por el check anterior, pero documentado explícitamente)
         $request->validate(['type' => 'required|in:user,worker,admin']);
         $user->type = $request->type;
         $user->save();

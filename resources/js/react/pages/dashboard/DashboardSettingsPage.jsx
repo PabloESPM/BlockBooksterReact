@@ -10,7 +10,14 @@ export default function DashboardSettingsPage() {
     const { logout } = useAuth();
     const navigate = useNavigate();
 
-    const [form, setForm] = useState({ email: '', telephone: '', password: '', password_confirmation: '' });
+    const [form, setForm] = useState({
+        email: '',
+        telephone: '',
+        current_password: '',
+        password: '',
+        password_confirmation: '',
+    });
+
     const [privacy, setPrivacy] = useState('public');
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(true);
@@ -40,7 +47,8 @@ export default function DashboardSettingsPage() {
         try {
             const res = await apiClient.put('/dashboard/settings', form);
             setMessage(res.data.message);
-            setForm(f => ({ ...f, password: '', password_confirmation: '' }));
+            // HAL-AUTH-04: limpiar contraseñas tras guardar
+            setForm(f => ({ ...f, current_password: '', password: '', password_confirmation: '' }));
         } catch (error) {
             if (error.response?.status === 422) {
                 setErrors(error.response.data.errors || {});
@@ -49,6 +57,7 @@ export default function DashboardSettingsPage() {
             setSavingCredentials(false);
         }
     };
+
 
     const handleSavePrivacy = async (e) => {
         e.preventDefault();
@@ -65,18 +74,32 @@ export default function DashboardSettingsPage() {
         }
     };
 
+    const [deletePassword, setDeletePassword] = useState('');
+    const [deleteError, setDeleteError] = useState('');
+    const [deletingAccount, setDeletingAccount] = useState(false);
+
     const handleDeleteAccount = async () => {
         if (!confirm('⚠️ ¿Estás seguro? Esta acción es IRREVERSIBLE.')) return;
         if (!confirm('Última oportunidad: ¿REALMENTE quieres eliminar tu cuenta y todos tus datos?')) return;
 
+        setDeleteError('');
+        setDeletingAccount(true);
         try {
-            await apiClient.delete('/dashboard/account');
+            // HAL-AUTH-03: enviar current_password para confirmar identidad antes de eliminar
+            await apiClient.delete('/dashboard/account', { data: { current_password: deletePassword } });
             await logout();
             navigate('/');
         } catch (err) {
-            console.error('Error deleting account:', err);
+            if (err.response?.status === 422) {
+                setDeleteError(err.response.data.errors?.current_password?.[0] || 'Contraseña incorrecta.');
+            } else {
+                setDeleteError('Error al eliminar la cuenta. Inténtalo de nuevo.');
+            }
+        } finally {
+            setDeletingAccount(false);
         }
     };
+
 
     if (loading) {
         return (
@@ -110,6 +133,24 @@ export default function DashboardSettingsPage() {
                     )}
 
                     <form onSubmit={handleSaveCredentials} className="space-y-6">
+                        {/* HAL-AUTH-04: Contraseña actual requerida para guardar cambios */}
+                        <div className="p-4 bg-amber-50 border-2 border-amber-400">
+                            <label className="block text-xs font-bold uppercase mb-2">🔑 Contraseña Actual (requerida para guardar cambios)</label>
+                            <input
+                                id="current-password-settings"
+                                type="password"
+                                value={form.current_password}
+                                onChange={(e) => setForm(f => ({ ...f, current_password: e.target.value }))}
+                                placeholder="Tu contraseña actual"
+                                className="neo-input w-full"
+                                required
+                                autoComplete="current-password"
+                            />
+                            {errors.current_password && (
+                                <p className="text-xs text-red-600 font-bold mt-1">{errors.current_password[0]}</p>
+                            )}
+                        </div>
+
                         <div>
                             <label className="block text-xs font-bold uppercase mb-2">Correo Electrónico</label>
                             <input
@@ -276,15 +317,32 @@ export default function DashboardSettingsPage() {
                 {/* Zona de Peligro */}
                 <div className="border-2 border-red-600 p-6 bg-red-50 shadow-[4px_4px_0px_#dc2626]">
                     <h3 className="font-black text-lg uppercase mb-4 text-red-600">Zona de Peligro</h3>
-                    <p className="text-sm font-bold text-gray-800 mb-6">
+                    <p className="text-sm font-bold text-gray-800 mb-4">
                         Una vez que elimines tu cuenta, no habrá vuelta atrás. Por favor, asegúrate de tu decisión.
                     </p>
+                    {/* HAL-AUTH-03: Confirmar identidad con contraseña antes de eliminar */}
+                    <div className="mb-4">
+                        <label className="block text-xs font-bold uppercase mb-2 text-red-700">🔑 Confirma tu Contraseña para Eliminar la Cuenta</label>
+                        <input
+                            id="delete-account-password"
+                            type="password"
+                            value={deletePassword}
+                            onChange={(e) => setDeletePassword(e.target.value)}
+                            placeholder="Tu contraseña actual"
+                            className="neo-input w-full border-red-400 focus:border-red-600"
+                            autoComplete="current-password"
+                        />
+                        {deleteError && (
+                            <p className="text-xs text-red-600 font-bold mt-1">{deleteError}</p>
+                        )}
+                    </div>
                     <div className="flex justify-end">
                         <button
                             onClick={handleDeleteAccount}
-                            className="bg-red-600 text-white font-black uppercase px-6 py-2 border-2 border-black shadow-[2px_2px_0px_#000] hover:translate-y-[-1px] hover:shadow-[4px_4px_0px_#000] transition-all cursor-pointer"
+                            disabled={!deletePassword || deletingAccount}
+                            className="bg-red-600 text-white font-black uppercase px-6 py-2 border-2 border-black shadow-[2px_2px_0px_#000] hover:translate-y-[-1px] hover:shadow-[4px_4px_0px_#000] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Eliminar Cuenta
+                            {deletingAccount ? 'Eliminando...' : 'Eliminar Cuenta'}
                         </button>
                     </div>
                 </div>

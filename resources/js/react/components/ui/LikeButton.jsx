@@ -8,6 +8,7 @@ import apiClient from '../../api/client';
  * @param {number} id - ID del recurso
  * @param {boolean} initialLiked - Estado inicial
  * @param {number} initialCount - Conteo inicial de likes
+ * @param {boolean} [disabled=false] - Si es true, el botón se muestra en modo solo lectura
  */
 export default function LikeButton({
     type = 'review',

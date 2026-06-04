@@ -79,6 +79,16 @@ export default function Navbar() {
         { to: '/community', label: 'Comunidad' },
     ];
 
+    // Menú de usuario desplegable — centraliza los enlaces duplicados
+    const userMenuItems = [
+        { to: '/dashboard',          label: 'PERFIL' },
+        { to: '/dashboard/social',   label: 'SOCIAL' },
+        { to: '/dashboard/lists',    label: 'MIS LISTAS' },
+        { to: '/dashboard/reviews',  label: 'MIS RESEÑAS' },
+        { to: '/dashboard/profile',  label: 'EDITAR PERFIL' },
+        { to: '/dashboard/settings', label: 'AJUSTES', isLast: true },
+    ];
+
     return (
         <header className="bg-brand-blue text-white border-b-4 border-black sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4">
@@ -178,7 +188,7 @@ export default function Navbar() {
                                     <button
                                         onClick={() => setUserMenuOpen(!userMenuOpen)}
                                         type="button"
-                                        className="bg-white border-2 border-black p-1 flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] cursor-pointer"
+                                        className="bg-white border-2 border-black p-1 flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 cursor-pointer"
                                         id="user-menu-button"
                                     >
                                         <span className="sr-only">Abrir menú de usuario</span>
@@ -198,7 +208,7 @@ export default function Navbar() {
                                         className="origin-top-right absolute right-0 mt-2 w-48 bg-white border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] py-1 focus:outline-none z-50 transform transition-all"
                                         role="menu"
                                     >
-                                        {(user?.type === 'admin' || user?.type === 'worker') && (
+                                        {isAdmin && (
                                             <Link
                                                 to="/admin"
                                                 onClick={() => setUserMenuOpen(false)}
@@ -208,61 +218,24 @@ export default function Navbar() {
                                                 PANEL ADMIN
                                             </Link>
                                         )}
-                                        <Link
-                                            to="/dashboard"
-                                            onClick={() => setUserMenuOpen(false)}
-                                            className="block px-4 py-2 text-sm text-black font-bold hover:bg-brand-yellow border-b border-gray-100"
-                                            role="menuitem"
-                                        >
-                                            PERFIL
-                                        </Link>
-                                        <Link
-                                            to="/dashboard/social"
-                                            onClick={() => setUserMenuOpen(false)}
-                                            className="block px-4 py-2 text-sm text-black font-bold hover:bg-brand-yellow border-b border-gray-100"
-                                            role="menuitem"
-                                        >
-                                            SOCIAL
-                                        </Link>
-                                        <Link
-                                            to="/dashboard/lists"
-                                            onClick={() => setUserMenuOpen(false)}
-                                            className="block px-4 py-2 text-sm text-black font-bold hover:bg-brand-yellow border-b border-gray-100"
-                                            role="menuitem"
-                                        >
-                                            MIS LISTAS
-                                        </Link>
-                                        <Link
-                                            to="/dashboard/reviews"
-                                            onClick={() => setUserMenuOpen(false)}
-                                            className="block px-4 py-2 text-sm text-black font-bold hover:bg-brand-yellow border-b border-gray-100"
-                                            role="menuitem"
-                                        >
-                                            MIS RESEÑAS
-                                        </Link>
-                                        <Link
-                                            to="/dashboard/profile"
-                                            onClick={() => setUserMenuOpen(false)}
-                                            className="block px-4 py-2 text-sm text-black font-bold hover:bg-brand-yellow border-b border-gray-100"
-                                            role="menuitem"
-                                        >
-                                            EDITAR PERFIL
-                                        </Link>
-                                        <Link
-                                            to="/dashboard/settings"
-                                            onClick={() => setUserMenuOpen(false)}
-                                            className="block px-4 py-2 text-sm text-black font-bold hover:bg-brand-yellow"
-                                            role="menuitem"
-                                        >
-                                            AJUSTES
-                                        </Link>
+                                        {userMenuItems.map((item) => (
+                                            <Link
+                                                key={item.to}
+                                                to={item.to}
+                                                onClick={() => setUserMenuOpen(false)}
+                                                className={`block px-4 py-2 text-sm text-black font-bold hover:bg-brand-yellow${item.isLast ? '' : ' border-b border-gray-100'}`}
+                                                role="menuitem"
+                                            >
+                                                {item.label}
+                                            </Link>
+                                        ))}
 
                                         <div className="border-t-2 border-black my-1"></div>
 
                                         <button
                                             onClick={() => {
                                                 setUserMenuOpen(false);
-                                                handleLogout();
+                                                void handleLogout();
                                             }}
                                             className="block w-full text-left px-4 py-2 text-sm text-black font-bold hover:bg-red-500 hover:text-white cursor-pointer"
                                             role="menuitem"

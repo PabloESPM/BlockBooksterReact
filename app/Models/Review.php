@@ -51,50 +51,44 @@ class Review extends Model
     }
 
     /**
-     * Preloads ratingRecord for a collection/array of reviews in a single query.
+     * Pre-carga los registros BookUser en un solo query eficiente.
+     * HAL-PERF-05: sustituye la cadena de OR anidados por un único whereIn + filtro en memoria,
+     * que PostgreSQL optimiza mejor especialmente con colecciones grandes (50+ reseñas).
+     *
+     * @param  \Illuminate\Support\Collection|\Illuminate\Pagination\LengthAwarePaginator|array  $reviews
      */
-    public static function preloadRatingRecords($reviews)
+    public static function preloadRatingRecords($reviews): void
     {
         if (empty($reviews)) {
             return;
         }
 
-        if ($reviews instanceof \Illuminate\Support\Collection) {
-            $items = $reviews;
-        } elseif ($reviews instanceof \Illuminate\Pagination\LengthAwarePaginator) {
-            $items = collect($reviews->items());
-        } else {
-            $items = collect($reviews);
-        }
+        $items = match (true) {
+            $reviews instanceof \Illuminate\Pagination\LengthAwarePaginator => collect($reviews->items()),
+            $reviews instanceof \Illuminate\Support\Collection               => $reviews,
+            default                                                          => collect($reviews),
+        };
 
         if ($items->isEmpty()) {
             return;
         }
 
-        // Build list of user_id and book_isbn combinations
-        $pairs = $items->map(fn ($r) => [
-            'user_id' => $r->user_id,
-            'book_isbn' => $r->book_isbn,
-        ])->unique(fn ($p) => $p['user_id'] . '_' . $p['book_isbn']);
+        // Extraer user_ids y book_isbns únicos para reducir el tamaño del IN
+        $userIds   = $items->pluck('user_id')->unique()->values()->all();
+        $bookIsbns = $items->pluck('book_isbn')->unique()->values()->all();
 
-        // Fetch matching BookUser records
-        $query = \App\Models\BookUser::query();
-        $query->where(function ($q) use ($pairs) {
-            foreach ($pairs as $pair) {
-                $q->orWhere(function ($sq) use ($pair) {
-                    $sq->where('user_id', $pair['user_id'])
-                       ->where('book_isbn', $pair['book_isbn']);
-                });
-            }
-        });
+        // Una sola query con doble whereIn (mucho más eficiente que OR anidados)
+        $bookUsers = \App\Models\BookUser::whereIn('user_id', $userIds)
+            ->whereIn('book_isbn', $bookIsbns)
+            ->get()
+            ->keyBy(fn ($bu) => $bu->user_id . '_' . $bu->book_isbn);
 
-        $bookUsers = $query->get()->keyBy(fn ($bu) => $bu->user_id . '_' . $bu->book_isbn);
-
-        // Associate BookUser records with reviews
+        // Asociar cada BookUser a su reseña en memoria (sin queries adicionales)
         foreach ($items as $review) {
             $key = $review->user_id . '_' . $review->book_isbn;
             $review->setRelation('ratingRecord', $bookUsers->get($key));
         }
     }
+
 }
 

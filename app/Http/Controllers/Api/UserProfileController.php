@@ -10,11 +10,14 @@ use App\Http\Resources\BookResource;
 use App\Http\Resources\AuthorResource;
 use App\Models\User;
 use App\Models\BookUser;
+use App\Traits\ChecksProfileVisibility;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class UserProfileController extends Controller
 {
+    // HAL-AUTH-02: Trait centralizado que elimina la duplicación de canViewUserProfile()
+    use ChecksProfileVisibility;
     /**
      * Perfil público de un usuario con lógica de visibilidad.
      * Replica exactamente la lógica de UserProfileController@show original.
@@ -275,19 +278,5 @@ class UserProfileController extends Controller
         ]);
     }
 
-    /**
-     * Comprueba si el visitante tiene permiso para ver el contenido del perfil de un usuario.
-     */
-    private function canViewUserProfile(User $user, ?User $viewer): bool
-    {
-        $isOwner = $viewer && $viewer->id === $user->id;
-
-        return match ($user->profile_visibility) {
-            'public' => true,
-            'followers' => $isOwner || ($viewer && $viewer->isFollowing($user)),
-            'friends' => $isOwner || ($viewer && $viewer->isFriend($user)),
-            'private' => (bool)$isOwner,
-            default => true,
-        };
-    }
 }
+
