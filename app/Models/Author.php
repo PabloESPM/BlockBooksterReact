@@ -73,7 +73,9 @@ class Author extends Model
      */
     public function followers()
     {
-        return $this->belongsToMany(User::class, 'author_followers', 'author_id', 'user_id')->withTimestamps();
+        return $this->belongsToMany(User::class, 'author_followers', 'author_id', 'user_id')
+            ->using(AuthorFollower::class)
+            ->withTimestamps();
     }
 
     /**

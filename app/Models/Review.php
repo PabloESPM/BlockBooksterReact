@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 
 class Review extends Model
@@ -31,10 +32,11 @@ class Review extends Model
         return $this->hasMany(ReviewLike::class);
     }
 
-    public function ratingRecord()
+    public function ratingRecord(): HasOne
     {
-        // Define standard relation on user_id as a fallback.
-        return $this->hasOne(BookUser::class, 'user_id', 'user_id');
+        return $this->hasOne(BookUser::class, 'user_id', 'user_id')
+            ->where('book_isbn', $this->book_isbn)
+            ->withDefault();
     }
 
     public function getRatingAttribute()
@@ -65,8 +67,8 @@ class Review extends Model
 
         $items = match (true) {
             $reviews instanceof \Illuminate\Pagination\LengthAwarePaginator => collect($reviews->items()),
-            $reviews instanceof \Illuminate\Support\Collection               => $reviews,
-            default                                                          => collect($reviews),
+            $reviews instanceof \Illuminate\Support\Collection => $reviews,
+            default => collect($reviews),
         };
 
         if ($items->isEmpty()) {
@@ -74,14 +76,14 @@ class Review extends Model
         }
 
         // Extraer user_ids y book_isbns únicos para reducir el tamaño del IN
-        $userIds   = $items->pluck('user_id')->unique()->values()->all();
+        $userIds = $items->pluck('user_id')->unique()->values()->all();
         $bookIsbns = $items->pluck('book_isbn')->unique()->values()->all();
 
         // Una sola query con doble whereIn (mucho más eficiente que OR anidados)
         $bookUsers = \App\Models\BookUser::whereIn('user_id', $userIds)
             ->whereIn('book_isbn', $bookIsbns)
             ->get()
-            ->keyBy(fn ($bu) => $bu->user_id . '_' . $bu->book_isbn);
+            ->keyBy(fn($bu) => $bu->user_id . '_' . $bu->book_isbn);
 
         // Asociar cada BookUser a su reseña en memoria (sin queries adicionales)
         foreach ($items as $review) {

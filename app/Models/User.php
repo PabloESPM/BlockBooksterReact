@@ -119,7 +119,9 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function followedAuthors()
     {
-        return $this->belongsToMany(Author::class , 'author_followers', 'user_id', 'author_id')->withTimestamps();
+        return $this->belongsToMany(Author::class, 'author_followers', 'user_id', 'author_id')
+            ->using(AuthorFollower::class)
+            ->withTimestamps();
     }
 
     /**
@@ -192,5 +194,25 @@ class User extends Authenticatable implements MustVerifyEmail
     public function unfollowList(FavList $list)
     {
         return $this->likedLists()->detach($list->id);
+    }
+
+    /**
+     * Comprueba si un visitante tiene permiso para ver el contenido completo de este perfil.
+     */
+    public function canViewContent(?User $visitor): bool
+    {
+        if ($visitor && $visitor->id === $this->id) {
+            return true;
+        }
+
+        return match ($this->profile_visibility) {
+            'public'    => true,
+            'followers' => $visitor && $this->followers()->where('follower_id', $visitor->id)->exists(),
+            'friends'   => $visitor
+                           && $this->followers()->where('follower_id', $visitor->id)->exists()
+                           && $this->following()->where('followed_id', $visitor->id)->exists(),
+            'private'   => false,
+            default     => false,
+        };
     }
 }

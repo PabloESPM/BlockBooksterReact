@@ -14,7 +14,6 @@ class BookUser extends Model
     protected $fillable = [
         'user_id',
         'book_isbn',
-        'fav_list_id',
         'status',
         'rating',
         'started_at',

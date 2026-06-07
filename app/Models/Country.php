@@ -11,15 +11,27 @@ class Country extends Model
 
     protected $fillable = [
         'name',
-        'phone_code',
+        'alpha2',
         'iso_code',
+        'phone_code',
         'currency',
         'continent',
-        'timezone'
+        'timezone',
+        'emoji',
     ];
 
     public function authors()
     {
         return $this->hasMany(Author::class);
+    }
+
+    public function users()
+    {
+        return $this->hasMany(User::class);
+    }
+
+    public function purchases()
+    {
+        return $this->hasMany(Purchase::class);
     }
 }

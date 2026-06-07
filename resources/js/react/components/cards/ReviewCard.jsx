@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import LikeButton from '../ui/LikeButton';
+import { formatDate } from '../../utils/formatDate';
 
 /**
  * Tarjeta de reseña estilo Neo-Brutalism.
@@ -26,16 +27,7 @@ export default function ReviewCard({ review, showBook = true, showActions = fals
         setAvatarError(false);
     }, [avatarUrl]);
 
-    // Formateador de fecha
-    const formatDate = (dateString) => {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('es-ES', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-        });
-    };
+
 
     // Comprobar si ha sido editado
     const hasBeenEdited = () => {
@@ -124,15 +116,16 @@ export default function ReviewCard({ review, showBook = true, showActions = fals
                 </div>
 
                 {/* Botón de Me Gusta Genérico */}
-                <div className="flex flex-col items-center ml-2 relative z-10 shrink-0">
-                    <LikeButton
-                        type="review"
-                        id={review.id}
-                        initialLiked={review.is_liked}
-                        initialCount={review.likes_count ?? 0}
-                        disabled={!!review.is_owner}
-                    />
-                </div>
+                {!review.is_owner && (
+                    <div className="flex flex-col items-center ml-2 relative z-10 shrink-0">
+                        <LikeButton
+                            type="review"
+                            id={review.id}
+                            initialLiked={review.is_liked}
+                            initialCount={review.likes_count ?? 0}
+                        />
+                    </div>
+                )}
             </div>
 
             {review.title && (

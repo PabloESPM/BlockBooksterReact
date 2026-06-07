@@ -41,10 +41,10 @@ class MediumIssuesTest extends TestCase
         $friendsUser = $this->crearUsuario(['profile_visibility' => 'friends']);
 
         // Agregar listas para hacerlos aparecer en curadores destacados
-        FavList::create(['user_id' => $publicUser->id, 'name' => 'Public List', 'visibility' => 'public']);
-        FavList::create(['user_id' => $privateUser->id, 'name' => 'Private List', 'visibility' => 'public']);
-        FavList::create(['user_id' => $followersUser->id, 'name' => 'Followers List', 'visibility' => 'public']);
-        FavList::create(['user_id' => $friendsUser->id, 'name' => 'Friends List', 'visibility' => 'public']);
+        FavList::factory()->for($publicUser)->create(['name' => 'Public List', 'visibility' => 'public']);
+        FavList::factory()->for($privateUser)->create(['name' => 'Private List', 'visibility' => 'public']);
+        FavList::factory()->for($followersUser)->create(['name' => 'Followers List', 'visibility' => 'public']);
+        FavList::factory()->for($friendsUser)->create(['name' => 'Friends List', 'visibility' => 'public']);
 
         $response = $this->getJson('/api/community');
 
@@ -261,7 +261,6 @@ class MediumIssuesTest extends TestCase
         $user->follow($userD);
 
         $response = $this->getJson('/api/dashboard/social');
-
         $response->assertStatus(200);
 
         // Check followed authors section
@@ -301,8 +300,8 @@ class MediumIssuesTest extends TestCase
         Sanctum::actingAs($user);
 
         // Create some lists
-        FavList::create(['user_id' => $user->id, 'name' => 'Lista 1', 'visibility' => 'public']);
-        FavList::create(['user_id' => $user->id, 'name' => 'Lista 2', 'visibility' => 'public']);
+        FavList::factory()->for($user)->create(['name' => 'Lista 1', 'visibility' => 'public']);
+        FavList::factory()->for($user)->create(['name' => 'Lista 2', 'visibility' => 'public']);
 
         $response = $this->getJson('/api/dashboard/lists?created_limit=5&followed_limit=5');
 
@@ -423,10 +422,10 @@ class MediumIssuesTest extends TestCase
         $profileUser = $this->crearUsuario(['profile_visibility' => 'public']);
 
         // Create lists
-        $createdList = FavList::create(['user_id' => $profileUser->id, 'name' => 'Created List', 'visibility' => 'public']);
+        $createdList = FavList::factory()->for($profileUser)->create(['name' => 'Created List', 'visibility' => 'public']);
 
         $otherUser = $this->crearUsuario();
-        $followedList = FavList::create(['user_id' => $otherUser->id, 'name' => 'Followed List', 'visibility' => 'public']);
+        $followedList = FavList::factory()->for($otherUser)->create(['name' => 'Followed List', 'visibility' => 'public']);
         $profileUser->followList($followedList);
 
         Sanctum::actingAs($user);
@@ -442,5 +441,40 @@ class MediumIssuesTest extends TestCase
         $responseFollowed->assertStatus(200);
         $this->assertCount(1, $responseFollowed->json('data'));
         $this->assertEquals($followedList->id, $responseFollowed->json('data.0.id'));
+    }
+
+    /**
+     * Test de visibilidad y permiso de seguimiento (can_follow).
+     */
+    public function test_can_follow_property_based_on_profile_visibility(): void
+    {
+        $visitante = $this->crearUsuario();
+        
+        $publicUser = $this->crearUsuario(['profile_visibility' => 'public']);
+        $followersUser = $this->crearUsuario(['profile_visibility' => 'followers']);
+        $friendsUser = $this->crearUsuario(['profile_visibility' => 'friends']);
+        $privateUser = $this->crearUsuario(['profile_visibility' => 'private']);
+
+        Sanctum::actingAs($visitante);
+
+        // 1. Perfil público -> can_follow = true
+        $resPublic = $this->getJson("/api/users/{$publicUser->id}");
+        $resPublic->assertStatus(200);
+        $this->assertTrue($resPublic->json('data.can_follow'));
+
+        // 2. Perfil followers -> can_follow = true
+        $resFollowers = $this->getJson("/api/users/{$followersUser->id}");
+        $resFollowers->assertStatus(200);
+        $this->assertTrue($resFollowers->json('data.can_follow'));
+
+        // 3. Perfil friends -> can_follow = true
+        $resFriends = $this->getJson("/api/users/{$friendsUser->id}");
+        $resFriends->assertStatus(200);
+        $this->assertTrue($resFriends->json('data.can_follow'));
+
+        // 4. Perfil privado -> can_follow = false
+        $resPrivate = $this->getJson("/api/users/{$privateUser->id}");
+        $resPrivate->assertStatus(200);
+        $this->assertFalse($resPrivate->json('data.can_follow'));
     }
 }

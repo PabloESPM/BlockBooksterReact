@@ -48,7 +48,7 @@ export default function UserCard({
                 </div>
             </Link>
 
-            {isAuthenticated && currentUser && currentUser.id !== user.id && (
+            {isAuthenticated && currentUser && currentUser.id !== user.id && user.can_follow && (
                 <div className="flex-shrink-0">
                     <FollowButton
                         type="user"

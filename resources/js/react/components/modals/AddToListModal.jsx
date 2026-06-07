@@ -28,8 +28,8 @@ export default function AddToListModal() {
         setLoadingLists(true);
         try {
             const res = await apiClient.get('/dashboard/lists');
-            // La API devuelve { data: [...] }
-            setUserLists(res.data.data || []);
+            // La API devuelve { created: [...], followed: [...] }
+            setUserLists(res.data.created || []);
         } catch (err) {
             console.error('Error fetching user lists:', err);
         } finally {
@@ -274,6 +274,7 @@ export default function AddToListModal() {
                                 className="w-full border-2 border-black p-2 text-sm bg-white focus:outline-none focus:shadow-[2px_2px_0px_#000] transition-shadow"
                             >
                                 <option value="public">Pública</option>
+                                <option value="followers">Seguidores</option>
                                 <option value="friends">Solo Amigos</option>
                                 <option value="private">Privada</option>
                             </select>

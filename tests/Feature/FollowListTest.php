@@ -35,8 +35,7 @@ class FollowListTest extends TestCase
     /** Crea una lista pública asociada a un usuario. */
     private function crearLista(User $user, array $attrs = []): FavList
     {
-        return FavList::create(array_merge([
-            'user_id'    => $user->id,
+        return FavList::factory()->for($user)->create(array_merge([
             'name'       => 'Lista de prueba',
             'visibility' => 'public',
         ], $attrs));
@@ -185,5 +184,28 @@ class FollowListTest extends TestCase
         $response = $this->getJson("/api/users/{$propietario->id}/lists");
 
         $response->assertStatus(403);
+    }
+
+    // ─────────────────────────────────────────────
+    //  Test 8: Lista pública de usuario privado es visible en el índice y detalle
+    // ─────────────────────────────────────────────
+
+    public function test_lista_publica_de_usuario_privado_es_visible_en_indice_y_detalle(): void
+    {
+        $propietario = $this->crearUsuario(['profile_visibility' => 'private']);
+        $lista = $this->crearLista($propietario, [
+            'name'       => 'Mi Lista Pública de Perfil Privado',
+            'visibility' => 'public',
+        ]);
+
+        // 1. Visitante sin sesión ve la lista en el índice /api/lists
+        $responseIndex = $this->getJson("/api/lists");
+        $responseIndex->assertStatus(200);
+        $responseIndex->assertJsonFragment(['name' => 'Mi Lista Pública de Perfil Privado']);
+
+        // 2. Visitante sin sesión ve el detalle /api/lists/{id}
+        $responseShow = $this->getJson("/api/lists/{$lista->id}");
+        $responseShow->assertStatus(200);
+        $responseShow->assertJsonPath('data.name', 'Mi Lista Pública de Perfil Privado');
     }
 }

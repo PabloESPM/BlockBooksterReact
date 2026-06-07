@@ -14,9 +14,11 @@ export default function UserProfileCard({
     readBooksCount = 0,
     readingBooksCount = 0,
     isOwner = false,
+    onFollowToggle = null,
 }) {
     const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&size=200&background=FFA903&color=000&bold=true`;
     const avatarUrl = user.avatar_url || fallbackUrl;
+    const showFollowButton = user.can_follow && !isOwner;
 
     return (
         <div className="neo-card p-6 mb-8">
@@ -48,34 +50,48 @@ export default function UserProfileCard({
                     )}
 
                     {/* Estadísticas del usuario */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                        <div className="text-center">
-                            <div className="text-3xl font-black">{readBooksCount}</div>
-                            <div className="text-xs font-bold uppercase text-gray-600">Libros Leídos</div>
+                    {(!user.can_view_content && !isOwner) ? (
+                        <div className="grid grid-cols-2 gap-4 mt-6 max-w-xs mx-auto md:mx-0">
+                            <div className="text-center md:text-left">
+                                <div className="text-3xl font-black">{user.followers_count ?? 0}</div>
+                                <div className="text-xs font-bold uppercase text-gray-600">Seguidores</div>
+                            </div>
+                            <div className="text-center md:text-left">
+                                <div className="text-3xl font-black">{user.following_count ?? 0}</div>
+                                <div className="text-xs font-bold uppercase text-gray-600">Siguiendo</div>
+                            </div>
                         </div>
-                        <div className="text-center">
-                            <div className="text-3xl font-black">{readingBooksCount}</div>
-                            <div className="text-xs font-bold uppercase text-gray-600">Leyendo</div>
+                    ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                            <div className="text-center">
+                                <div className="text-3xl font-black">{readBooksCount}</div>
+                                <div className="text-xs font-bold uppercase text-gray-600">Libros Leídos</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-3xl font-black">{readingBooksCount}</div>
+                                <div className="text-xs font-bold uppercase text-gray-600">Leyendo</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-3xl font-black">{user.lists_count ?? 0}</div>
+                                <div className="text-xs font-bold uppercase text-gray-600">Listas</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-3xl font-black">{user.reviews_count ?? 0}</div>
+                                <div className="text-xs font-bold uppercase text-gray-600">Reseñas</div>
+                            </div>
                         </div>
-                        <div className="text-center">
-                            <div className="text-3xl font-black">{user.lists_count ?? 0}</div>
-                            <div className="text-xs font-bold uppercase text-gray-600">Listas</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="text-3xl font-black">{user.reviews_count ?? 0}</div>
-                            <div className="text-xs font-bold uppercase text-gray-600">Reseñas</div>
-                        </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Botón Follow */}
-                {!isOwner && (
+                {showFollowButton && (
                     <div className="flex-shrink-0">
                         <FollowButton
                             type="user"
                             id={user.id}
                             initialFollowing={!!user.is_following}
                             initialCount={user.followers_count ?? 0}
+                            onToggle={onFollowToggle}
                         />
                     </div>
                 )}

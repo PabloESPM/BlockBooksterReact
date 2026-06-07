@@ -256,6 +256,27 @@ class DashboardController extends Controller
         $totalFollowers  = $user->followers()->count();
         $hasMoreFollowers = $totalFollowers > $followersLimit;
 
+        $res = [
+            'followed_authors'  => AuthorResource::collection($followedAuthors),
+            'total_authors'     => $totalAuthors,
+            'has_more_authors'  => $hasMoreAuthors,
+
+            'following'         => UserResource::collection($followingUsers),
+            'following_count'   => $totalFollowing,
+            'has_more_following' => $hasMoreFollowing,
+
+            'followers'         => UserResource::collection($followerUsers),
+            'followers_count'   => $totalFollowers,
+            'has_more_followers' => $hasMoreFollowers,
+        ];
+
+        $followerUsers->each(function ($u) use ($followedIds) {
+            $u->is_following = in_array($u->id, $followedIds);
+        });
+
+        $totalFollowers  = $user->followers()->count();
+        $hasMoreFollowers = $totalFollowers > $followersLimit;
+
         return response()->json([
             'followed_authors'  => AuthorResource::collection($followedAuthors),
             'total_authors'     => $totalAuthors,

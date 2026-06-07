@@ -20,7 +20,7 @@ class UpdateListRequest extends FormRequest
         return [
             'name'        => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
-            'visibility'  => ['required', 'in:public,private,friends'],
+            'visibility'  => ['required', 'in:public,private,friends,followers'],
         ];
     }
 }

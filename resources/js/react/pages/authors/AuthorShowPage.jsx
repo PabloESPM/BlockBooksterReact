@@ -4,6 +4,7 @@ import apiClient from '../../api/client';
 import BookCard from '../../components/cards/BookCard';
 import FollowButton from '../../components/ui/FollowButton';
 import { useAuth } from '../../context/AuthContext';
+import { formatDate } from '../../utils/formatDate';
 
 /**
  * Perfil de autor — Replica pages.authors.show.
@@ -70,9 +71,7 @@ export default function AuthorShowPage() {
     const photoUrl = author.photo || fallbackUrl;
 
     const formatBirthDate = (dateString) => {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('es-ES', {
+        return formatDate(dateString, 'es-ES', {
             day: '2-digit',
             month: 'short',
             year: 'numeric'

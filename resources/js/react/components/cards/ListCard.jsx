@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import LikeButton from '../ui/LikeButton';
+import { formatDate } from '../../utils/formatDate';
 
 /**
  * Tarjeta de lista de favoritos estilo Neo-Brutalism.
@@ -10,16 +11,7 @@ export default function ListCard({ list, dashboard = false, onDelete }) {
     const avatarUrl = list.user?.avatar_url
         || `https://ui-avatars.com/api/?name=${encodeURIComponent(list.user?.name || 'U')}&size=80&background=0E3FA9&color=fff`;
 
-    // Formateador de fecha
-    const formatDate = (dateString) => {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('es-ES', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-        });
-    };
+
 
     // Formateador de tiempo relativo simple (hace X tiempo / diffForHumans)
     const getRelativeOrFormattedDate = (dateString) => {
@@ -100,20 +92,21 @@ export default function ListCard({ list, dashboard = false, onDelete }) {
                     <div className="flex items-center gap-3 flex-shrink-0">
                         {dashboard && list.visibility && (
                             <span className="bg-gray-100 text-gray-800 text-[10px] font-bold uppercase px-1.5 py-0.5 border border-black whitespace-nowrap">
-                                {list.visibility === 'public' ? 'Pública' : (list.visibility === 'private' ? 'Privada' : 'Amigos')}
+                                {list.visibility === 'public' ? 'Pública' : (list.visibility === 'private' ? 'Privada' : (list.visibility === 'followers' ? 'Seguidores' : 'Amigos'))}
                             </span>
                         )}
 
                         {/* Botón de Me Gusta Genérico */}
-                        <div className="relative z-10 scale-90 origin-right">
-                            <LikeButton
-                                type="list"
-                                id={list.id}
-                                initialLiked={list.is_liked}
-                                initialCount={list.likes_count ?? 0}
-                                disabled={!!list.is_owner}
-                            />
-                        </div>
+                        {!list.is_owner && (
+                            <div className="relative z-10 scale-90 origin-right">
+                                <LikeButton
+                                    type="list"
+                                    id={list.id}
+                                    initialLiked={list.is_liked}
+                                    initialCount={list.likes_count ?? 0}
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
 

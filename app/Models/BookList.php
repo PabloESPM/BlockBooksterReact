@@ -10,7 +10,9 @@ class BookList extends Model
     use HasFactory;
     public $timestamps = false;
 
-    protected $dates = ['added_at'];
+    protected $casts = [
+        'added_at' => 'datetime',
+    ];
 
     public function list()
     {

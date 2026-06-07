@@ -49,6 +49,15 @@ class UserResource extends JsonResource
             ),
             'type' => $this->type,
             'profile_visibility' => $this->profile_visibility,
+            'can_follow' => in_array($this->profile_visibility, ['public', 'followers', 'friends']),
+            'is_following' => $request->user()
+                ? $this->followers()->where('follower_id', $request->user()->id)->exists()
+                : false,
+            'is_friend' => $request->user()
+                ? $this->followers()->where('follower_id', $request->user()->id)->exists()
+                  && $this->following()->where('followed_id', $request->user()->id)->exists()
+                : false,
+            'can_view_content' => $this->canViewContent($request->user()),
             'is_blocked' => $this->when(
                 $request->user()?->type === 'admin',
                 $this->is_blocked
@@ -60,9 +69,6 @@ class UserResource extends JsonResource
             'following_count' => $this->when(isset($this->following_count), $this->following_count),
             'reviews_count' => $this->when(isset($this->reviews_count), $this->reviews_count),
             'lists_count' => $this->when(isset($this->lists_count), $this->lists_count),
-
-            // Relationship flags — only when explicitly set
-            'is_following' => $this->when(isset($this->is_following), $this->is_following),
         ];
     }
 

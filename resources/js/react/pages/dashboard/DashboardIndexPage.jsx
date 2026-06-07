@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import apiClient from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { formatDate } from '../../utils/formatDate';
 
 /**
  * Dashboard principal — Estadísticas y colecciones del usuario.
@@ -63,14 +64,10 @@ export default function DashboardIndexPage() {
         return `${name} ${surname}`.trim();
     };
 
-    const formatDate = (dateString) => {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('es-ES', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-        });
+    const dateOptions = {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
     };
 
     if (loading) {
@@ -147,9 +144,9 @@ export default function DashboardIndexPage() {
                                     </p>
                                     <p className="text-xs text-gray-500 uppercase mt-0.5">
                                         {item.status === 'read' && item.finished_at ? (
-                                            `Terminado el ${formatDate(item.finished_at)}`
+                                            `Terminado el ${formatDate(item.finished_at, 'es-ES', dateOptions)}`
                                         ) : item.started_at ? (
-                                            `Desde el ${formatDate(item.started_at)}`
+                                            `Desde el ${formatDate(item.started_at, 'es-ES', dateOptions)}`
                                         ) : (
                                             'Recientemente'
                                         )}
@@ -197,7 +194,7 @@ export default function DashboardIndexPage() {
                                         <p className="text-sm text-gray-600 mb-3">por {authorName}</p>
 
                                         <p className="text-xs font-bold text-gray-500 uppercase mb-4">
-                                            Comenzado {entrada.started_at ? formatDate(entrada.started_at) : 'recientemente'}
+                                            Comenzado {entrada.started_at ? formatDate(entrada.started_at, 'es-ES', dateOptions) : 'recientemente'}
                                         </p>
 
                                         {/* Acciones */}

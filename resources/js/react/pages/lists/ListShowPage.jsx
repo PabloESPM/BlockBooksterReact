@@ -4,6 +4,7 @@ import apiClient from '../../api/client';
 import BookCard from '../../components/cards/BookCard';
 import LikeButton from '../../components/ui/LikeButton';
 import { useAuth } from '../../context/AuthContext';
+import { formatDate as formatDateUtil } from '../../utils/formatDate';
 
 /**
  * Detalle de lista — Replica pages.list.show.
@@ -13,6 +14,7 @@ export default function ListShowPage() {
     const { user: currentUser, isAuthenticated } = useAuth();
     const [list, setList] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [errorStatus, setErrorStatus] = useState(null);
 
     // Estado del modal de edición
     const [showEditModal, setShowEditModal] = useState(false);
@@ -24,23 +26,33 @@ export default function ListShowPage() {
     const [successMessage, setSuccessMessage] = useState('');
 
     const fetchList = () => {
-        apiClient.get(`/lists/${id}`).then((res) => {
-            setList(res.data.data);
-            setName(res.data.data.name || '');
-            setDescription(res.data.data.description || '');
-            setVisibility(res.data.data.visibility || 'public');
-            setLoading(false);
-        });
+        apiClient.get(`/lists/${id}`)
+            .then((res) => {
+                setList(res.data.data);
+                setName(res.data.data.name || '');
+                setDescription(res.data.data.description || '');
+                setVisibility(res.data.data.visibility || 'public');
+                setErrorStatus(null);
+            })
+            .catch((err) => {
+                console.error('Error fetching list:', err);
+                setList(null);
+                setErrorStatus(err.response?.status || 500);
+            })
+            .finally(() => {
+                setLoading(false);
+            });
     };
 
     useEffect(() => {
         setLoading(true);
+        setErrorStatus(null);
         fetchList();
     }, [id]);
 
     const handleShare = () => {
         const shareData = {
-            title: list.name,
+            title: list?.name || '',
             url: window.location.href
         };
         if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
@@ -87,21 +99,69 @@ export default function ListShowPage() {
         );
     }
 
+    if (errorStatus === 403) {
+        return (
+            <div className="max-w-7xl mx-auto px-4 py-20 text-center">
+                <div className="neo-card p-12 max-w-md mx-auto">
+                    <span className="text-6xl font-black text-brand-yellow block mb-4">🔒</span>
+                    <h1 className="text-2xl font-black uppercase mb-2">LISTA NO DISPONIBLE</h1>
+                    <p className="text-sm text-gray-500 mb-6 font-bold uppercase">
+                        Esta lista es privada o restringida y no tienes permisos para acceder a ella.
+                    </p>
+                    <Link to="/" className="neo-btn-primary text-sm inline-block">Volver al inicio</Link>
+                </div>
+            </div>
+        );
+    }
+
+    if (errorStatus === 404) {
+        return (
+            <div className="max-w-7xl mx-auto px-4 py-20 text-center">
+                <div className="neo-card p-12 max-w-md mx-auto">
+                    <span className="text-6xl font-black text-brand-yellow block mb-4">404</span>
+                    <h1 className="text-2xl font-black uppercase mb-2">Lista no encontrada</h1>
+                    <p className="text-sm text-gray-500 mb-6">La lista que buscas no existe o ha sido eliminada.</p>
+                    <Link to="/" className="neo-btn-primary text-sm inline-block">Volver al inicio</Link>
+                </div>
+            </div>
+        );
+    }
+
+    if (errorStatus) {
+        return (
+            <div className="max-w-7xl mx-auto px-4 py-20 text-center">
+                <div className="neo-card p-12 max-w-md mx-auto">
+                    <span className="text-6xl font-black text-brand-yellow block mb-4">⚠️</span>
+                    <h1 className="text-2xl font-black uppercase mb-2">Error</h1>
+                    <p className="text-sm text-gray-500 mb-6">Ocurrió un error al cargar la lista.</p>
+                    <Link to="/" className="neo-btn-primary text-sm inline-block">Volver al inicio</Link>
+                </div>
+            </div>
+        );
+    }
+
     if (!list) {
-        return <div className="text-center py-12 font-bold">Lista no encontrada</div>;
+        return (
+            <div className="max-w-7xl mx-auto px-4 py-20 text-center">
+                <div className="neo-card p-12 max-w-md mx-auto">
+                    <span className="text-6xl font-black text-brand-yellow block mb-4">⚠️</span>
+                    <h1 className="text-2xl font-black uppercase mb-2">Lista no encontrada</h1>
+                    <p className="text-sm text-gray-500 mb-6">No pudimos encontrar la lista solicitada.</p>
+                    <Link to="/" className="neo-btn-primary text-sm inline-block">Volver al inicio</Link>
+                </div>
+            </div>
+        );
     }
 
     const avatarUrl = list.user?.avatar_url
         || `https://ui-avatars.com/api/?name=${encodeURIComponent(list.user?.name || 'U')}&size=80&background=0E3FA9&color=fff`;
 
     const formatDate = (dateString) => {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        const formatted = date.toLocaleDateString('es-ES', {
+        const formatted = formatDateUtil(dateString, 'es-ES', {
             month: 'short',
             year: 'numeric',
         });
-        return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+        return formatted ? formatted.charAt(0).toUpperCase() + formatted.slice(1) : '';
     };
 
     const isOwner = list.is_owner || (isAuthenticated && currentUser && list.user?.id === currentUser.id);
@@ -131,6 +191,11 @@ export default function ListShowPage() {
                             {list.visibility === 'friends' && (
                                 <span className="bg-gray-100 text-gray-600 text-xs font-bold uppercase px-2 py-1 border border-black">
                                     Amigos
+                                </span>
+                            )}
+                            {list.visibility === 'followers' && (
+                                <span className="bg-gray-100 text-gray-600 text-xs font-bold uppercase px-2 py-1 border border-black">
+                                    Seguidores
                                 </span>
                             )}
                         </div>
@@ -175,15 +240,16 @@ export default function ListShowPage() {
                     {/* Botones de Acción */}
                     <div className="flex-shrink-0 flex gap-2 items-center flex-wrap">
                         {/* Botón de Like */}
-                        <div className="scale-100">
-                            <LikeButton
-                                type="list"
-                                id={list.id}
-                                initialLiked={list.is_liked}
-                                initialCount={list.likes_count ?? 0}
-                                disabled={isOwner}
-                            />
-                        </div>
+                        {!isOwner && (
+                            <div className="scale-100">
+                                <LikeButton
+                                    type="list"
+                                    id={list.id}
+                                    initialLiked={list.is_liked}
+                                    initialCount={list.likes_count ?? 0}
+                                />
+                            </div>
+                        )}
 
                         <button
                             onClick={handleShare}
@@ -292,6 +358,7 @@ export default function ListShowPage() {
                                     className="w-full border-2 border-black p-2 bg-white focus:outline-none focus:shadow-[4px_4px_0px_#000] transition-shadow"
                                 >
                                     <option value="public">Pública (Visible para todos)</option>
+                                    <option value="followers">Seguidores (Solo quienes me siguen)</option>
                                     <option value="friends">Solo Amigos</option>
                                     <option value="private">Privada (Solo yo)</option>
                                 </select>

@@ -9,29 +9,55 @@ use App\Models\Genre;
 
 class CatalogsSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     * Pobla los datos base estáticos (países, idiomas y géneros literarios) requeridos en cualquier entorno.
-     */
     public function run(): void
     {
-        // 1. Creación de países (datos estáticos deterministas para producción)
+        // 1. Países — 249 países reales desde mledoze/countries
         if (Country::count() === 0) {
-            collect([
-                ['name' => 'España', 'phone_code' => '34', 'iso_code' => 'ESP', 'currency' => 'EUR', 'continent' => 'Europe', 'timezone' => 'Europe/Madrid'],
-                ['name' => 'Estados Unidos', 'phone_code' => '1', 'iso_code' => 'USA', 'currency' => 'USD', 'continent' => 'North America', 'timezone' => 'America/New_York'],
-                ['name' => 'Francia', 'phone_code' => '33', 'iso_code' => 'FRA', 'currency' => 'EUR', 'continent' => 'Europe', 'timezone' => 'Europe/Paris'],
-                ['name' => 'Reino Unido', 'phone_code' => '44', 'iso_code' => 'GBR', 'currency' => 'GBP', 'continent' => 'Europe', 'timezone' => 'Europe/London'],
-                ['name' => 'Alemania', 'phone_code' => '49', 'iso_code' => 'DEU', 'currency' => 'EUR', 'continent' => 'Europe', 'timezone' => 'Europe/Berlin'],
-                ['name' => 'Italia', 'phone_code' => '39', 'iso_code' => 'ITA', 'currency' => 'EUR', 'continent' => 'Europe', 'timezone' => 'Europe/Rome'],
-                ['name' => 'Portugal', 'phone_code' => '351', 'iso_code' => 'PRT', 'currency' => 'EUR', 'continent' => 'Europe', 'timezone' => 'Europe/Lisbon'],
-                ['name' => 'Japón', 'phone_code' => '81', 'iso_code' => 'JPN', 'currency' => 'JPY', 'continent' => 'Asia', 'timezone' => 'Asia/Tokyo'],
-                ['name' => 'China', 'phone_code' => '86', 'iso_code' => 'CHN', 'currency' => 'CNY', 'continent' => 'Asia', 'timezone' => 'Asia/Shanghai'],
-                ['name' => 'México', 'phone_code' => '52', 'iso_code' => 'MEX', 'currency' => 'MXN', 'continent' => 'North America', 'timezone' => 'America/Mexico_City']
-            ])->each(fn ($c) => Country::create($c));
+            $json     = file_get_contents(database_path('data/countries.json'));
+            $countries = json_decode($json, true);
+
+            foreach ($countries as $country) {
+                // Nombre en español con fallback al inglés
+                $name = $country['translations']['spa']['common']
+                    ?? $country['name']['common']
+                    ?? null;
+
+                if (!$name) continue;
+
+                // Prefijo telefónico: root + sufijo si es un único carácter
+                $phoneCode = null;
+                if (!empty($country['idd']['root'])) {
+                    $root    = ltrim($country['idd']['root'], '+');
+                    $suffix  = $country['idd']['suffixes'][0] ?? '';
+                    $phoneCode = (count($country['idd']['suffixes']) === 1 && strlen($suffix) === 1)
+                        ? $root . $suffix
+                        : $root;
+                }
+
+                // Primera moneda disponible
+                $currency = !empty($country['currencies'])
+                    ? array_key_first($country['currencies'])
+                    : null;
+
+                try {
+                    Country::create([
+                        'name'       => $name,
+                        'alpha2'     => $country['cca2']          ?: null,
+                        'iso_code'   => $country['cca3']          ?: null,
+                        'phone_code' => $phoneCode,
+                        'currency'   => $currency,
+                        'continent'  => $country['continents'][0] ?? null,
+                        'timezone'   => $country['timezones'][0]  ?? null,
+                        'emoji'      => $country['flag']          ?? null,
+                    ]);
+                } catch (\Exception $e) {
+                    // Salta duplicados o territorios sin código estándar
+                    continue;
+                }
+            }
         }
 
-        // 2. Creación de idiomas
+        // 2. Idiomas
         if (Language::count() === 0) {
             collect([
                 ['code' => 'es', 'name' => 'Español'],
@@ -47,7 +73,7 @@ class CatalogsSeeder extends Seeder
             ])->each(fn ($l) => Language::create($l));
         }
 
-        // 3. Creación de géneros literarios
+        // 3. Géneros literarios
         if (Genre::count() === 0) {
             collect([
                 'Ficción', 'No Ficción', 'Misterio', 'Thriller', 'Romance',

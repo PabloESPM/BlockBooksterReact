@@ -152,7 +152,7 @@ class UserProfileController extends Controller
                 ->latest('list_likes.created_at');
         } else {
             $query = $user->lists()
-                ->with(['likes', 'user'])
+                ->with(['likes', 'user', 'books'])
                 ->withCount(['books', 'likes']);
 
             // Aplicar filtros de visibilidad

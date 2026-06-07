@@ -45,7 +45,9 @@ class AuthTest extends TestCase
         $user = $this->crearUser();
 
         $response = $this->actingAs($user, 'web')
-            ->deleteJson('/api/dashboard/account');
+            ->deleteJson('/api/dashboard/account', [
+                'current_password' => 'password',
+            ]);
 
         $response->assertStatus(200);
         $response->assertJson([

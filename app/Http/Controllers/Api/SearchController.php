@@ -42,9 +42,8 @@ class SearchController extends Controller
             ->limit(10)
             ->get();
 
-        // Buscar Usuarios (solo perfiles públicos)
+        // Buscar Usuarios (todos los perfiles son descubribles)
         $users = \App\Models\User::where('name', 'ILIKE', "%{$query}%")
-            ->where('profile_visibility', 'public')
             ->withCount('followers')
             ->limit(10)
             ->get();

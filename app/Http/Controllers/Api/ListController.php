@@ -22,7 +22,39 @@ class ListController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $lists = FavList::where('visibility', 'public')
+        $visitor = $request->user('sanctum');
+
+        $lists = FavList::where(function ($query) use ($visitor) {
+                // LISTAS PÚBLICAS — Visibles para todos sin excepción
+                $query->where('visibility', 'public');
+
+                if ($visitor) {
+                    // LISTAS "followers" — Visibles si el visitante sigue al propietario
+                    $query->orWhere(function ($q) use ($visitor) {
+                        $q->where('visibility', 'followers')
+                          ->whereHas('user', fn($u) =>
+                              $u->whereHas('followers', fn($f) =>
+                                  $f->where('follower_id', $visitor->id)
+                              )
+                          );
+                    });
+
+                    // LISTAS "friends" — Visibles si el seguimiento es mutuo
+                    $query->orWhere(function ($q) use ($visitor) {
+                        $q->where('visibility', 'friends')
+                          ->whereHas('user', fn($u) =>
+                              $u->whereHas('followers', fn($f) =>
+                                  $f->where('follower_id', $visitor->id)
+                              )
+                              ->whereHas('following', fn($f) =>
+                                  $f->where('followed_id', $visitor->id)
+                              )
+                          );
+                    });
+                }
+            })
+            // Excluir las propias listas del visitante (las ve en su dashboard)
+            ->when($visitor, fn($q) => $q->where('user_id', '!=', $visitor->id))
             ->with([
                 'user',
                 'likes',
@@ -51,18 +83,20 @@ class ListController extends Controller
         $viewer = $request->user();
         $owner  = $list->user;
 
-        // Verificar visibilidad del perfil del propietario (Trait centralizado)
-        if (!$this->canViewUserProfile($owner, $viewer)) {
-            abort(403, 'No tienes permiso para ver esta lista.');
-        }
-
         $isOwner = $viewer && $viewer->id === $list->user_id;
-        $canView = match ($list->visibility) {
-            'public'  => true,
-            'private' => $isOwner,
-            'friends' => $isOwner || ($viewer && $viewer->isFriend($owner)),
-            default   => false,
-        };
+        $canView = false;
+
+        if ($isOwner) {
+            $canView = true;
+        } else {
+            $canView = match ($list->visibility) {
+                'public'    => true,
+                'followers' => $viewer && $owner->followers()->where('follower_id', $viewer->id)->exists(),
+                'friends'   => $viewer && $owner->isFriend($viewer),
+                'private'   => false,
+                default     => false,
+            };
+        }
 
         if (!$canView) {
             abort(403, 'No tienes permiso para ver esta lista.');
@@ -158,7 +192,7 @@ class ListController extends Controller
         $validated = $request->validate([
             'name'        => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
-            'visibility'  => ['required', 'in:public,private,friends'],
+            'visibility'  => ['required', 'in:public,private,friends,followers'],
             'book_isbn'   => 'required|exists:books,isbn',
         ]);
 

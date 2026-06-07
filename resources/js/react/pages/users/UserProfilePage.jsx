@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../api/client';
 import BookCard from '../../components/cards/BookCard';
 import ReviewCard from '../../components/cards/ReviewCard';
@@ -15,13 +16,15 @@ import Pagination from '../../components/ui/Pagination';
  */
 export default function UserProfilePage() {
     const { id } = useParams();
+    const { user: currentUser } = useAuth();
     const [profile, setProfile] = useState(null);
-    const [canView, setCanView] = useState(true);
-    const [isOwner, setIsOwner] = useState(false);
     const [bookStats, setBookStats] = useState({});
     const [activeTab, setActiveTab] = useState('read');
     const [tabData, setTabData] = useState({ data: [], meta: null });
     const [loading, setLoading] = useState(true);
+
+    const canView = profile?.can_view_content ?? true;
+    const isOwner = profile ? (currentUser && profile.id === currentUser.id) : false;
 
     // Listas
     const [createdLists, setCreatedLists] = useState({ data: [], meta: null });
@@ -44,15 +47,17 @@ export default function UserProfilePage() {
     const [loadingFollowers, setLoadingFollowers] = useState(false);
 
     // Cargar perfil
-    useEffect(() => {
+    const loadProfile = () => {
         setLoading(true);
         apiClient.get(`/users/${id}`).then((res) => {
             setProfile(res.data.data);
-            setCanView(res.data.can_view_content);
-            setIsOwner(res.data.is_owner);
             setBookStats(res.data.book_stats);
             setLoading(false);
         });
+    };
+
+    useEffect(() => {
+        loadProfile();
     }, [id]);
 
     // Cargar datos de la pestaña activa (excepto listas y social que tienen carga propia)
@@ -177,14 +182,24 @@ export default function UserProfilePage() {
                 readBooksCount={bookStats.read || 0}
                 readingBooksCount={bookStats.reading || 0}
                 isOwner={isOwner}
+                onFollowToggle={loadProfile}
             />
 
             {/* Contenido (con lógica de visibilidad) */}
             {!canView ? (
                 <div className="neo-card p-12 text-center">
                     <p className="text-lg font-bold mb-2">🔒 Perfil privado</p>
-                    <p className="text-sm text-gray-500">
-                        Este usuario ha restringido la visibilidad de su perfil.
+                    <p className="text-sm text-gray-500 font-bold uppercase">
+                        {(() => {
+                            const messages = {
+                                'followers': 'Este perfil es privado. Síguele para ver su contenido.',
+                                'friends':   profile?.is_following
+                                                ? 'Estás siguiendo a este usuario. El acceso completo se activa cuando sea mutuo.'
+                                                : 'Este perfil solo es visible para amigos mutuos.',
+                                'private':   'Este perfil es privado.',
+                            };
+                            return messages[profile?.profile_visibility] ?? 'Este perfil es privado.';
+                        })()}
                     </p>
                 </div>
             ) : (

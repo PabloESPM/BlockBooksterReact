@@ -12,10 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('authors', function (Blueprint $table) {
-            $table->id(); // autoincremental
+            $table->id();
 
             $table->string('name');
             $table->string('surname')->nullable();
+            $table->string('slug')->unique();
             $table->date('birth_date')->nullable();
             $table->foreignId('country_id')->nullable()->constrained()->onDelete('set null');
             $table->text('biography')->nullable();
@@ -24,7 +25,6 @@ return new class extends Migration
             $table->timestamps();
         });
     }
-
 
     /**
      * Reverse the migrations.

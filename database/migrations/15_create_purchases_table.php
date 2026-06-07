@@ -36,6 +36,11 @@ return new class extends Migration
 
             $table->boolean('active')->default(true);
 
+            $table->string('store_name')->nullable();
+            $table->string('url')->nullable();
+            $table->decimal('price', 10, 2)->nullable();
+            $table->string('currency', 3)->nullable();
+
             $table->timestamps();
 
             $table->unique([

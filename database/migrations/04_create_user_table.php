@@ -42,6 +42,11 @@ return new class extends Migration {
 
             $table->boolean('is_blocked')->default(false);
             $table->rememberToken();
+
+            $table->string('location')->nullable();
+            $table->string('website')->nullable();
+            $table->string('twitter')->nullable();
+
             $table->timestamps();
 
             $table->index('profile_visibility');
