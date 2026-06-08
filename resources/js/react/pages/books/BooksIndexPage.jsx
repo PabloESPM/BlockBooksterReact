@@ -57,6 +57,14 @@ export default function BooksIndexPage() {
         } else {
             params.delete(key);
         }
+        
+        // Si se actualiza la búsqueda unificada, limpiar los parámetros antiguos
+        if (key === 'search') {
+            params.delete('title');
+            params.delete('author');
+            params.delete('isbn');
+        }
+        
         params.delete('page'); // Resetear página al modificar cualquier filtro
         setSearchParams(params);
     };

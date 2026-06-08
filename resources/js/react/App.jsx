@@ -54,6 +54,7 @@ import {
     PrivacyPage,
     TermsPage,
     CookiesPage,
+    JobsPage,
 } from './pages/static/StaticPages';
 import NotFoundPage from './pages/static/NotFoundPage';
 
@@ -110,6 +111,7 @@ export default function App() {
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/cookies" element={<CookiesPage />} />
+                <Route path="/jobs" element={<JobsPage />} />
 
                 {/* ── Dashboard (protegido, requiere autenticación) ── */}
                 <Route

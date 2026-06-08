@@ -1,51 +1,27 @@
 import { useState, useEffect } from 'react';
 
 /**
- * Componente de Búsqueda Avanzada.
- * Ofrece campos de texto para Título, Autor e ISBN, con debouncing integrado
- * para sincronizarse con los parámetros de la URL sin sobrecargar la API.
+ * Componente de Búsqueda de Libros.
+ * Ofrece un único campo de búsqueda unificado para Título, Autor e ISBN,
+ * con debouncing integrado para sincronizarse con los parámetros de la URL.
  */
 export default function AdvancedSearch({ searchParams, updateFilter, loading }) {
-    const [localTitle, setLocalTitle] = useState(searchParams.get('title') || '');
-    const [localAuthor, setLocalAuthor] = useState(searchParams.get('author') || '');
-    const [localIsbn, setLocalIsbn] = useState(searchParams.get('isbn') || '');
+    const [localSearch, setLocalSearch] = useState(searchParams.get('search') || '');
 
-    // Sincronizar estados locales cuando cambian los parámetros de la URL
+    // Sincronizar estado local cuando cambia el parámetro 'search' en la URL
     useEffect(() => {
-        setLocalTitle(searchParams.get('title') || '');
-        setLocalAuthor(searchParams.get('author') || '');
-        setLocalIsbn(searchParams.get('isbn') || '');
+        setLocalSearch(searchParams.get('search') || '');
     }, [searchParams]);
 
-    // Debounce para el Título (400ms)
+    // Debounce para la Búsqueda (400ms)
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (localTitle !== (searchParams.get('title') || '')) {
-                updateFilter('title', localTitle);
+            if (localSearch !== (searchParams.get('search') || '')) {
+                updateFilter('search', localSearch);
             }
         }, 400);
         return () => clearTimeout(timer);
-    }, [localTitle]);
-
-    // Debounce para el Autor (400ms)
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (localAuthor !== (searchParams.get('author') || '')) {
-                updateFilter('author', localAuthor);
-            }
-        }, 400);
-        return () => clearTimeout(timer);
-    }, [localAuthor]);
-
-    // Debounce para el ISBN (400ms)
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (localIsbn !== (searchParams.get('isbn') || '')) {
-                updateFilter('isbn', localIsbn);
-            }
-        }, 400);
-        return () => clearTimeout(timer);
-    }, [localIsbn]);
+    }, [localSearch]);
 
     return (
         <div className="neo-card p-6 mb-12 bg-gray-100">
@@ -54,43 +30,37 @@ export default function AdvancedSearch({ searchParams, updateFilter, loading }) 
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                           d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                 </svg>
-                Búsqueda Avanzada
+                Búsqueda de Libros
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <input
-                    type="text"
-                    placeholder="Título"
-                    value={localTitle}
-                    onChange={(e) => setLocalTitle(e.target.value)}
-                    className="neo-input bg-white"
-                />
-                <input
-                    type="text"
-                    placeholder="Autor"
-                    value={localAuthor}
-                    onChange={(e) => setLocalAuthor(e.target.value)}
-                    className="neo-input bg-white"
-                />
-                <input
-                    type="text"
-                    placeholder="ISBN"
-                    value={localIsbn}
-                    onChange={(e) => setLocalIsbn(e.target.value)}
-                    className="neo-input bg-white"
-                />
-                {/* Indicador de carga durante la búsqueda */}
-                <div className="flex items-center justify-center">
-                    {loading ? (
-                        <div className="flex items-center gap-2 text-sm font-bold uppercase text-gray-500">
-                            <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                            Buscando...
-                        </div>
-                    ) : (
-                        <span className="text-sm font-bold uppercase text-gray-400">
-                            Escribe para buscar
-                        </span>
-                    )}
+
+            {/* Contenedor neo-brutalista de entrada única con interacción en focus */}
+            <div className="flex items-stretch border-2 border-black bg-white transition-all shadow-[4px_4px_0px_#000] focus-within:shadow-[6px_6px_0px_#000] focus-within:-translate-y-0.5">
+                {/* Icono decorativo de búsqueda */}
+                <div className="flex items-center px-4 border-r-2 border-black text-gray-800 shrink-0 bg-gray-50">
+                    <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
                 </div>
+
+                {/* Campo unificado */}
+                <input
+                    type="text"
+                    placeholder="Buscar por título, autor o ISBN…"
+                    value={localSearch}
+                    onChange={(e) => setLocalSearch(e.target.value)}
+                    className="flex-1 px-4 py-3 bg-transparent outline-none text-base font-bold placeholder-gray-400 w-full text-black"
+                />
+
+                {/* Indicador de carga integrado — aparece solo durante la búsqueda */}
+                {loading && (
+                    <div className="flex items-center gap-2 px-4 border-l-2 border-black shrink-0 bg-gray-50">
+                        <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                        <span className="hidden sm:inline text-[10px] font-black uppercase tracking-widest text-gray-500">
+                            Buscando…
+                        </span>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -172,4 +172,22 @@ class HomeController extends Controller
             'top_genres'      => GenreResource::collection($homeData['topGenres']),
         ]);
     }
+
+    /**
+     * Obtener estadísticas públicas globales de la plataforma.
+     * Cachea los resultados durante 5 minutos para rendimiento.
+     */
+    public function stats(): JsonResponse
+    {
+        $stats = Cache::remember('platform_stats', 300, function () {
+            return [
+                'total_books' => Book::count(),
+                'total_users' => \App\Models\User::count(),
+                'total_reviews' => Review::count(),
+                'total_ads' => 0, // Siempre es 0
+            ];
+        });
+
+        return response()->json($stats);
+    }
 }

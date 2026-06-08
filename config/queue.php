@@ -4,12 +4,12 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Default Queue Connection Name
+    | Nombre de la Conexión de Cola por Defecto
     |--------------------------------------------------------------------------
     |
-    | Laravel's queue supports a variety of backends via a single, unified
-    | API, giving you convenient access to each backend using identical
-    | syntax for each. The default queue connection is defined below.
+    | La cola de Laravel admite una variedad de backends a través de una API única y
+    | unificada, lo que le brinda un acceso conveniente a cada backend utilizando una sintaxis
+    | idéntica para cada uno. La conexión de cola por defecto se define a continuación.
     |
     */
 
@@ -17,14 +17,14 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Queue Connections
+    | Conexiones de Cola
     |--------------------------------------------------------------------------
     |
-    | Here you may configure the connection options for every queue backend
-    | used by your application. An example configuration is provided for
-    | each backend supported by Laravel. You're also free to add more.
+    | Aquí puede configurar las opciones de conexión para cada backend de cola
+    | utilizado por su aplicación. Se proporciona una configuración de ejemplo para
+    | cada backend compatible con Laravel. También es libre de agregar más.
     |
-    | Drivers: "sync", "database", "beanstalkd", "sqs", "redis",
+    | Controladores: "sync", "database", "beanstalkd", "sqs", "redis",
     |          "deferred", "background", "failover", "null"
     |
     */
@@ -93,12 +93,12 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Job Batching
+    | Procesamiento por Lotes de Trabajos
     |--------------------------------------------------------------------------
     |
-    | The following options configure the database and table that store job
-    | batching information. These options can be updated to any database
-    | connection and table which has been defined by your application.
+    | Las siguientes opciones configuran la base de datos y la tabla que almacenan la
+    | información de procesamiento por lotes de trabajos. Estas opciones se pueden actualizar
+    | a cualquier conexión de base de datos y tabla definida por su aplicación.
     |
     */
 
@@ -109,14 +109,14 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Failed Queue Jobs
+    | Trabajos de Cola Fallidos
     |--------------------------------------------------------------------------
     |
-    | These options configure the behavior of failed queue job logging so you
-    | can control how and where failed jobs are stored. Laravel ships with
-    | support for storing failed jobs in a simple file or in a database.
+    | Estas opciones configuran el comportamiento del registro de trabajos de cola fallidos para que
+    | pueda controlar cómo y dónde se almacenan los trabajos fallidos. Laravel incluye
+    | soporte para almacenar trabajos fallidos en un archivo simple o en una base de datos.
     |
-    | Supported drivers: "database-uuids", "dynamodb", "file", "null"
+    | Controladores soportados: "database-uuids", "dynamodb", "file", "null"
     |
     */
 

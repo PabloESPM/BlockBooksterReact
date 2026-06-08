@@ -100,7 +100,7 @@ class MediumIssuesTest extends TestCase
     }
 
     /**
-     * Test for updating book status.
+     * Prueba para actualizar el estado de un libro.
      */
     public function test_book_status_update(): void
     {
@@ -127,7 +127,7 @@ class MediumIssuesTest extends TestCase
     }
 
     /**
-     * Test user profile books and stats.
+     * Prueba de libros y estadísticas del perfil de usuario.
      */
     public function test_user_profile_books_and_stats(): void
     {
@@ -141,20 +141,20 @@ class MediumIssuesTest extends TestCase
             'genre_id' => $genre->id,
         ]);
 
-        // Mark book as reading
+        // Marcar libro como leyendo
         BookUser::create([
             'user_id' => $user->id,
             'book_isbn' => $book->isbn,
             'status' => 'reading',
         ]);
 
-        // Get user profile stats
+        // Obtener estadísticas del perfil de usuario
         $response = $this->getJson("/api/users/{$user->id}");
         $response->assertStatus(200);
         $this->assertEquals(1, $response->json('book_stats.reading'));
         $this->assertEquals(0, $response->json('book_stats.read'));
 
-        // Get user books tab data
+        // Obtener datos de la pestaña de libros del usuario
         $booksResponse = $this->getJson("/api/users/{$user->id}/books?status=reading");
         $booksResponse->assertStatus(200);
         $this->assertCount(1, $booksResponse->json('data'));
@@ -162,7 +162,7 @@ class MediumIssuesTest extends TestCase
     }
 
     /**
-     * Test dashboard index endpoint returns the correct structure.
+     * Prueba que el endpoint del índice del panel retorne la estructura correcta.
      */
     public function test_dashboard_index_returns_correct_structure(): void
     {
@@ -207,7 +207,7 @@ class MediumIssuesTest extends TestCase
     }
 
     /**
-     * Test dashboard social endpoint returns the correct structure.
+     * Prueba que el endpoint social del panel retorne la estructura correcta.
      */
     public function test_dashboard_social_endpoint_returns_correct_structure(): void
     {
@@ -235,27 +235,27 @@ class MediumIssuesTest extends TestCase
     }
 
     /**
-     * Test dashboard social endpoint returns correct follow relationships (is_following).
+     * Prueba que el endpoint social del panel retorne las relaciones de seguimiento correctas (is_following).
      */
     public function test_dashboard_social_endpoint_returns_correct_follow_relationships(): void
     {
         $user = $this->crearUsuario();
         Sanctum::actingAs($user);
 
-        // User A (authenticated) follows Author X
+        // El usuario A (autenticado) sigue al autor X
         $country = Country::first() ?? Country::factory()->create();
         $author = Author::factory()->create(['country_id' => $country->id]);
         $user->followAuthor($author);
 
-        // User A (authenticated) follows User B
+        // El usuario A (autenticado) sigue al usuario B
         $userB = $this->crearUsuario();
         $user->follow($userB);
 
-        // User C follows User A, but User A does NOT follow User C back
+        // El usuario C sigue al usuario A, pero el usuario A NO devuelve el seguimiento al usuario C
         $userC = $this->crearUsuario();
         $userC->follow($user);
 
-        // User D follows User A, and User A follows User D back (mutual follow)
+        // El usuario D sigue al usuario A, y el usuario A devuelve el seguimiento al usuario D (seguimiento mutuo)
         $userD = $this->crearUsuario();
         $userD->follow($user);
         $user->follow($userD);
@@ -275,24 +275,24 @@ class MediumIssuesTest extends TestCase
         $this->assertEquals($userB->id, $following[0]['id']);
         $this->assertTrue($following[0]['is_following']);
 
-        // Check followers section
+        // Comprobar la sección de seguidores
         $followers = $response->json('followers');
         $this->assertCount(2, $followers);
 
-        // Map followers by ID
+        // Mapear seguidores por ID
         $followersMap = collect($followers)->keyBy('id')->toArray();
 
-        // User C is a follower, but not followed back by User A
+        // El usuario C es un seguidor, pero el usuario A no le devuelve el seguimiento
         $this->assertArrayHasKey($userC->id, $followersMap);
         $this->assertFalse($followersMap[$userC->id]['is_following']);
 
-        // User D is a follower, and followed back by User A (mutual)
+        // El usuario D es un seguidor, y el usuario A le devuelve el seguimiento (mutuo)
         $this->assertArrayHasKey($userD->id, $followersMap);
         $this->assertTrue($followersMap[$userD->id]['is_following']);
     }
 
     /**
-     * Test dashboard lists endpoint returns the correct structure.
+     * Prueba que el endpoint de listas del panel retorne la estructura correcta.
      */
     public function test_dashboard_lists_endpoint_returns_correct_structure(): void
     {
@@ -321,7 +321,7 @@ class MediumIssuesTest extends TestCase
     }
 
     /**
-     * Test book average rating and reviews count calculation.
+     * Prueba el cálculo de la calificación promedio del libro y el recuento de reseñas.
      */
     public function test_book_average_rating(): void
     {
@@ -339,7 +339,7 @@ class MediumIssuesTest extends TestCase
         BookUser::create(['user_id' => $user1->id, 'book_isbn' => $book->isbn, 'rating' => 5, 'status' => 'read']);
         BookUser::create(['user_id' => $user2->id, 'book_isbn' => $book->isbn, 'rating' => 3, 'status' => 'read']);
 
-        // Add reviews to match reviews_count
+        // Añadir reseñas para que coincidan con reviews_count
         Review::create(['user_id' => $user1->id, 'book_isbn' => $book->isbn, 'title' => 'Good', 'body' => 'Yes']);
         Review::create(['user_id' => $user2->id, 'book_isbn' => $book->isbn, 'title' => 'Average', 'body' => 'Ok']);
 
@@ -350,7 +350,7 @@ class MediumIssuesTest extends TestCase
     }
 
     /**
-     * Test for Issue 2: Guardar foto de autor en Admin actualiza photo_url.
+     * Incidencia 2: Guardar foto de autor en Admin actualiza photo_url.
      */
     public function test_admin_author_save_saves_photo_url_correctly(): void
     {
@@ -384,21 +384,21 @@ class MediumIssuesTest extends TestCase
     }
 
     /**
-     * Test for public user profile followed authors endpoint.
+     * Prueba para el endpoint de autores seguidos del perfil de usuario público.
      */
     public function test_user_profile_followed_authors_endpoint(): void
     {
         $user = $this->crearUsuario();
         $profileUser = $this->crearUsuario();
 
-        // Create country and author
+        // Crear país y autor
         $country = Country::first() ?? Country::factory()->create();
         $author = \App\Models\Author::factory()->create(['country_id' => $country->id]);
 
-        // Profile user follows author
+        // El usuario del perfil sigue al autor
         $profileUser->followAuthor($author);
 
-        // Visitor (authenticated) checks followed authors of profile user
+        // El visitante (autenticado) comprueba los autores seguidos del usuario del perfil
         Sanctum::actingAs($user);
 
         $response = $this->getJson("/api/users/{$profileUser->id}/authors");
@@ -414,7 +414,7 @@ class MediumIssuesTest extends TestCase
     }
 
     /**
-     * Test for user profile lists endpoint with type parameter.
+     * Prueba para el endpoint de listas del perfil de usuario con el parámetro type.
      */
     public function test_user_profile_lists_endpoint_with_type(): void
     {

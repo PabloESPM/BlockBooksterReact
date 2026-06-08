@@ -43,6 +43,7 @@ Route::prefix('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware('throttle:api')->get('/home', [HomeController::class, 'index']);
+Route::get('/stats', [HomeController::class, 'stats']);
 
 /*
 |--------------------------------------------------------------------------

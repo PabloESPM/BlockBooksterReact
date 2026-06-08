@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 /**
- * Pre-configured Axios instance for Laravel API communication.
- * Uses Sanctum cookie-based authentication (same domain, withCredentials).
+ * Instancia de Axios preconfigurada para la comunicación con la API de Laravel.
+ * Usa autenticación basada en cookies de Sanctum (mismo dominio, conCredentials).
  */
 const apiClient = axios.create({
     baseURL: '/api',
@@ -24,8 +24,8 @@ apiClient.interceptors.response.use(
         const status = error.response?.status;
 
         if (status === 401) {
-            // Session expired — redirect to login
-            // Only redirect if we're not already on the login page and it's not the initial user check
+            // Sesión expirada — redirigir a inicio de sesión
+            // Solo redirigir si no estamos ya en la página de inicio de sesión y no es la verificación inicial del usuario
             const isAuthUserCheck = error.config?.url?.endsWith('/auth/user');
             if (!isAuthUserCheck && !window.location.pathname.startsWith('/login')) {
                 window.location.href = '/login';
@@ -37,7 +37,7 @@ apiClient.interceptors.response.use(
         }
 
         if (status === 419) {
-            // CSRF token mismatch — refresh and retry
+            // Discordancia del token CSRF — refrescar y reintentar
             console.warn('CSRF token mismatch — refreshing page.');
             window.location.reload();
         }

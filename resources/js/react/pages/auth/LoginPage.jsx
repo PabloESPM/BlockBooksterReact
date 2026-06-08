@@ -20,7 +20,7 @@ export default function LoginPage() {
             const result = await login(email, password);
             const user = result.data;
 
-            // Redirect admin/worker to admin dashboard
+            // Redirigir admin/worker al panel de administración
             if (user.type === 'admin' || user.type === 'worker') {
                 navigate('/admin');
             } else {

@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>BlockBookster</title>
 
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2">
+
+
     <!-- SEO -->
     <meta name="description" content="BlockBookster — Tu red social de libros. Descubre, valora y comparte tus lecturas favoritas.">
 

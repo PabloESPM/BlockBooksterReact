@@ -20,7 +20,7 @@ class AuthTest extends TestCase
     }
 
     /**
-     * Test that an authenticated user can logout successfully via Sanctum.
+     * Prueba que un usuario autenticado pueda cerrar sesión con éxito a través de Sanctum.
      */
     public function test_authenticated_user_can_logout(): void
     {
@@ -38,7 +38,7 @@ class AuthTest extends TestCase
     }
 
     /**
-     * Test that an authenticated user can delete their account.
+     * Prueba que un usuario autenticado pueda eliminar su cuenta.
      */
     public function test_authenticated_user_can_delete_account(): void
     {

@@ -4,13 +4,13 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Default Mailer
+    | Transmisor de Correo por Defecto
     |--------------------------------------------------------------------------
     |
-    | This option controls the default mailer that is used to send all email
-    | messages unless another mailer is explicitly specified when sending
-    | the message. All additional mailers can be configured within the
-    | "mailers" array. Examples of each type of mailer are provided.
+    | Esta opción controla el transmisor de correo por defecto que se utiliza para enviar todos los
+    | mensajes de correo electrónico a menos que se especifique explícitamente otro transmisor al enviar
+    | el mensaje. Todos los transmisores adicionales se pueden configurar dentro del
+    | array "mailers". Se proporcionan ejemplos de cada tipo de transmisor.
     |
     */
 
@@ -18,18 +18,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Mailer Configurations
+    | Configuraciones de Transmisores de Correo
     |--------------------------------------------------------------------------
     |
-    | Here you may configure all of the mailers used by your application plus
-    | their respective settings. Several examples have been configured for
-    | you and you are free to add your own as your application requires.
+    | Aquí puede configurar todos los transmisores de correo utilizados por su aplicación más
+    | sus respectivos ajustes. Se han configurado varios ejemplos para
+    | usted y es libre de agregar los suyos propios según lo requiera su aplicación.
     |
-    | Laravel supports a variety of mail "transport" drivers that can be used
-    | when delivering an email. You may specify which one you're using for
-    | your mailers below. You may also add additional mailers if needed.
+    | Laravel admite una variedad de controladores de "transporte" de correo que se pueden utilizar
+    | al entregar un correo electrónico. Puede especificar cuál está utilizando para
+    | sus transmisores a continuación. También puede agregar transmisores adicionales si es necesario.
     |
-    | Supported: "smtp", "sendmail", "mailgun", "ses", "ses-v2",
+    | Soportados: "smtp", "sendmail", "mailgun", "ses", "ses-v2",
     |            "postmark", "resend", "log", "array",
     |            "failover", "roundrobin"
     |
@@ -101,12 +101,12 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Global "From" Address
+    | Dirección "From" Global
     |--------------------------------------------------------------------------
     |
-    | You may wish for all emails sent by your application to be sent from
-    | the same address. Here you may specify a name and address that is
-    | used globally for all emails that are sent by your application.
+    | Es posible que desee que todos los correos electrónicos enviados por su aplicación se envíen desde
+    | la misma dirección. Aquí puede especificar un nombre y una dirección que se
+    | utilicen globalmente para todos los correos electrónicos enviados por su aplicación.
     |
     */
 

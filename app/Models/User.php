@@ -98,7 +98,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Check if this user is friends with another user (mutual follow).
+     * Comprueba si este usuario es amigo de otro usuario (seguimiento mutuo).
      */
     public function isFriend(User $user): bool
     {
@@ -133,7 +133,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Check if this user is following an author.
+     * Comprueba si este usuario sigue a un autor.
      */
     public function isFollowingAuthor(Author $author): bool
     {
@@ -141,7 +141,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Check if this user is following (liked) a list.
+     * Comprueba si este usuario sigue (le gusta) una lista.
      */
     public function isFollowingList(FavList $list): bool
     {

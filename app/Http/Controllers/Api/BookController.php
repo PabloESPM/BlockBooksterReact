@@ -21,16 +21,27 @@ class BookController extends Controller
         $query = Book::with('authors');
 
         // ── Búsqueda por título, autor o ISBN ──
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->whereLikeAccentInsensitive('title', $search)
+                  ->orWhereLikeAccentInsensitive('isbn', $search)
+                  ->orWhereHas('authors', function ($aq) use ($search) {
+                      $aq->whereLikeAccentInsensitive('name', $search)
+                         ->orWhereLikeAccentInsensitive('surname', $search);
+                  });
+            });
+        }
         if ($request->filled('title')) {
-            $query->where('title', 'like', '%' . $request->title . '%');
+            $query->whereLikeAccentInsensitive('title', $request->title);
         }
         if ($request->filled('author')) {
             $query->whereHas('authors', function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->author . '%');
+                $q->whereLikeAccentInsensitive('name', $request->author);
             });
         }
         if ($request->filled('isbn')) {
-            $query->where('isbn', 'like', '%' . $request->isbn . '%');
+            $query->whereLikeAccentInsensitive('isbn', $request->isbn);
         }
 
         // ── Filtros del sidebar ──

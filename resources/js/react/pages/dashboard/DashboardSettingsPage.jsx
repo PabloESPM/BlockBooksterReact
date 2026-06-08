@@ -251,7 +251,7 @@ export default function DashboardSettingsPage() {
                             </div>
                         </label>
 
-                        {/* Option: Followers */}
+                        {/* Opción: Seguidores */}
                         <label className={`flex items-start gap-4 cursor-pointer p-4 border-2 transition-colors ${privacy === 'followers' ? 'border-black bg-brand-yellow/10' : 'border-gray-200'} hover:border-black`}>
                             <input
                                 type="radio"

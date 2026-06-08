@@ -17,8 +17,8 @@ class LowIssuesTest extends TestCase
     }
 
     /**
-     * Test for Issue 1 (Bajo): Vulnerabilidad Potencial de Mass Assignment en el Modelo User.
-     * Verifies that 'type' and 'is_blocked' are guarded from mass assignment.
+     * Prueba para la Incidencia 1 (Baja): Vulnerabilidad Potencial de Mass Assignment en el Modelo User.
+     * Verifica que 'type' y 'is_blocked' estén protegidos contra la asignación masiva.
      */
     public function test_user_type_and_is_blocked_are_guarded_from_mass_assignment(): void
     {

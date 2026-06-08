@@ -1,8 +1,8 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 
 /**
- * AuthLayout — Replicates layouts/auth.blade.php
- * Blue background with dot pattern, centered card with Neo-Brutalism styling.
+ * AuthLayout — Replica layouts/auth.blade.php
+ * Fondo azul con patrón de puntos, tarjeta centrada con estilo Neo-Brutalista.
  */
 export default function AuthLayout() {
     return (
@@ -25,7 +25,7 @@ export default function AuthLayout() {
                     </Link>
                 </div>
 
-                {/* Auth Card */}
+                {/* Tarjeta de autenticación */}
                 <div className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8">
                     <Outlet />
                 </div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 /**
  * Componente de Filtros de Libros.
- * Renders a sticky sidebar on desktop, and a sliding drawer modal on mobile.
+ * Renderiza una barra lateral fija en escritorio y un panel deslizante modal en móvil.
  */
 export default function BookFilters({
     searchParams,

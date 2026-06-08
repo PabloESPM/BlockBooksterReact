@@ -1,12 +1,12 @@
 /*
- * Neo-Brutalism Design Tokens & Utilities for React
- * Mirrors the existing Tailwind @layer components from app.css
- * These classes are already defined in app.css and available globally.
+ * Tokens de diseño y utilidades de Neo-Brutalismo para React
+ * Refleja los componentes de @layer de Tailwind existentes de app.css
+ * Estas clases ya están definidas en app.css y disponibles globalmente.
  *
- * This file adds React-specific utilities and transitions.
+ * Este archivo añade utilidades y transiciones específicas de React.
  */
 
-/* Transition defaults for interactive elements */
+/* Valores por defecto de transición para elementos interactivos */
 .neo-transition {
     transition: all 150ms ease-in-out;
 }

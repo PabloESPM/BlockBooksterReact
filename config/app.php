@@ -4,12 +4,12 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Application Name
+    | Nombre de la Aplicación
     |--------------------------------------------------------------------------
     |
-    | This value is the name of your application, which will be used when the
-    | framework needs to place the application's name in a notification or
-    | other UI elements where an application name needs to be displayed.
+    | Este valor es el nombre de su aplicación, que se utilizará cuando el
+    | framework necesite colocar el nombre de la aplicación en una notificación u
+    | otros elementos de la interfaz de usuario donde deba mostrarse un nombre de aplicación.
     |
     */
 
@@ -17,12 +17,12 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Application Environment
+    | Entorno de la Aplicación
     |--------------------------------------------------------------------------
     |
-    | This value determines the "environment" your application is currently
-    | running in. This may determine how you prefer to configure various
-    | services the application utilizes. Set this in your ".env" file.
+    | Este valor determina el "entorno" en el que se ejecuta actualmente su
+    | aplicación. Esto puede determinar cómo prefiere configurar varios
+    | servicios que utiliza la aplicación. Establezca esto en su archivo ".env".
     |
     */
 
@@ -30,12 +30,12 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Application Debug Mode
+    | Modo de Depuración de la Aplicación
     |--------------------------------------------------------------------------
     |
-    | When your application is in debug mode, detailed error messages with
-    | stack traces will be shown on every error that occurs within your
-    | application. If disabled, a simple generic error page is shown.
+    | Cuando su aplicación está en modo de depuración, se mostrarán mensajes de error
+    | detallados con trazas de pila en cada error que ocurra dentro de su
+    | aplicación. Si está desactivado, se muestra una página de error genérica simple.
     |
     */
 
@@ -43,12 +43,12 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Application URL
+    | URL de la Aplicación
     |--------------------------------------------------------------------------
     |
-    | This URL is used by the console to properly generate URLs when using
-    | the Artisan command line tool. You should set this to the root of
-    | the application so that it's available within Artisan commands.
+    | Esta URL es utilizada por la consola para generar correctamente URLs al usar
+    | la herramienta de línea de comandos Artisan. Debe establecer esto en la raíz de
+    | la aplicación para que esté disponible en los comandos de Artisan.
     |
     */
 
@@ -56,12 +56,12 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Application Timezone
+    | Zona Horaria de la Aplicación
     |--------------------------------------------------------------------------
     |
-    | Here you may specify the default timezone for your application, which
-    | will be used by the PHP date and date-time functions. The timezone
-    | is set to "UTC" by default as it is suitable for most use cases.
+    | Aquí puede especificar la zona horaria por defecto para su aplicación, que
+    | será utilizada por las funciones de fecha y hora de PHP. La zona horaria
+    | se establece en "UTC" por defecto ya que es adecuada para la mayoría de los casos.
     |
     */
 
@@ -69,12 +69,12 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Application Locale Configuration
+    | Configuración de Idioma de la Aplicación
     |--------------------------------------------------------------------------
     |
-    | The application locale determines the default locale that will be used
-    | by Laravel's translation / localization methods. This option can be
-    | set to any locale for which you plan to have translation strings.
+    | El idioma de la aplicación determina el idioma por defecto que utilizarán
+    | los métodos de traducción / localización de Laravel. Esta opción se puede
+    | establecer en cualquier idioma para el que planee tener cadenas de traducción.
     |
     */
 
@@ -86,12 +86,12 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Encryption Key
+    | Clave de Cifrado
     |--------------------------------------------------------------------------
     |
-    | This key is utilized by Laravel's encryption services and should be set
-    | to a random, 32 character string to ensure that all encrypted values
-    | are secure. You should do this prior to deploying the application.
+    | Esta clave es utilizada por los servicios de cifrado de Laravel y debe establecerse
+    | en una cadena aleatoria de 32 caracteres para garantizar que todos los valores cifrados
+    | estén seguros. Debe hacer esto antes de implementar la aplicación.
     |
     */
 
@@ -107,14 +107,14 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Maintenance Mode Driver
+    | Controlador del Modo de Mantenimiento
     |--------------------------------------------------------------------------
     |
-    | These configuration options determine the driver used to determine and
-    | manage Laravel's "maintenance mode" status. The "cache" driver will
-    | allow maintenance mode to be controlled across multiple machines.
+    | Estas opciones de configuración determinan el controlador utilizado para determinar y
+    | gestionar el estado de "modo de mantenimiento" de Laravel. El controlador "cache" permitirá
+    | que el modo de mantenimiento se controle en varias máquinas.
     |
-    | Supported drivers: "file", "cache"
+    | Controladores soportados: "file", "cache"
     |
     */
 

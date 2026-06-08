@@ -83,7 +83,7 @@ export default function UserProfileCard({
                     )}
                 </div>
 
-                {/* Botón Follow */}
+                {/* Botón Seguir */}
                 {showFollowButton && (
                     <div className="flex-shrink-0">
                         <FollowButton

@@ -4,12 +4,12 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Default Filesystem Disk
+    | Disco de Sistema de Archivos por Defecto
     |--------------------------------------------------------------------------
     |
-    | Here you may specify the default filesystem disk that should be used
-    | by the framework. The "local" disk, as well as a variety of cloud
-    | based disks are available to your application for file storage.
+    | Aquí puede especificar el disco de sistema de archivos por defecto que debe usarse
+    | por el framework. El disco "local", así como una variedad de discos basados
+    | en la nube están disponibles para su aplicación para el almacenamiento de archivos.
     |
     */
 
@@ -17,7 +17,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Filesystem Disks
+    | Discos de Sistema de Archivos
     |--------------------------------------------------------------------------
     |
     | Below you may configure as many filesystem disks as necessary, and you
@@ -64,10 +64,10 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Symbolic Links
+    | Enlaces Simbólicos
     |--------------------------------------------------------------------------
     |
-    | Here you may configure the symbolic links that will be created when the
+    | Aquí puede configurar los enlaces simbólicos que se crearán cuando se
     | `storage:link` Artisan command is executed. The array keys should be
     | the locations of the links and the values should be their targets.
     |

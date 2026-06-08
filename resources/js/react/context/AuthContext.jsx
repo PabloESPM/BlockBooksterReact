@@ -7,7 +7,7 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Load the authenticated user on mount
+    // Carga el usuario autenticado al montar el componente
     const fetchUser = useCallback(async () => {
         try {
             const response = await apiClient.get('/auth/user');

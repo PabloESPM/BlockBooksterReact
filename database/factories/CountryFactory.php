@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 class CountryFactory extends Factory
 {
     /**
-     * Define the model's default state.
+     * Define el estado por defecto del modelo.
      *
      * @return array<string, mixed>
      */
