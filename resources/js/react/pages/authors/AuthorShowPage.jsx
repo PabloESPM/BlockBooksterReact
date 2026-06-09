@@ -149,6 +149,13 @@ export default function AuthorShowPage() {
                                     id={author.id}
                                     initialFollowing={author.is_followed}
                                     initialCount={author.followers_count}
+                                    onToggle={(data) => {
+                                        setAuthor(prev => prev ? {
+                                            ...prev,
+                                            is_followed: data.following,
+                                            followers_count: data.followers_count ?? (data.following ? (prev.followers_count || 0) + 1 : Math.max(0, (prev.followers_count || 1) - 1))
+                                        } : null);
+                                    }}
                                 />
                             )}
                             <button

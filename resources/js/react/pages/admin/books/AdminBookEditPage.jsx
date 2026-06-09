@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import apiClient from '../../../api/client';
+import bookService from '../../../services/bookService';
+import lookupCache from '../../../utils/lookupCache';
 
 /**
  * Formulario de creación/edición de libro.
@@ -30,8 +31,8 @@ export default function AdminBookEditPage() {
     // Cargar datos si estamos editando
     useEffect(() => {
         if (isEdit) {
-            apiClient.get(`/admin/books/${isbn}`).then((res) => {
-                const f = res.data.form;
+            bookService.adminGetBook(isbn).then((resData) => {
+                const f = resData.form;
                 setForm({
                     isbn: f.isbn, title: f.title, description: f.description || '',
                     genre_id: f.genre_id || '', language_id: f.language_id || '',
@@ -39,25 +40,25 @@ export default function AdminBookEditPage() {
                     number_of_pages: f.number_of_pages || '',
                     author_id: f.author_id, author_name: f.author_name || '',
                 });
-                if (res.data.data.cover_image) {
-                    setCoverPreview(res.data.data.cover_image);
+                if (resData.data.cover_image) {
+                    setCoverPreview(resData.data.cover_image);
                 } else if (f.cover_path) {
                     setCoverPreview(`${window.location.origin}/storage/${f.cover_path}`);
                 }
-                setGenres(res.data.genres);
-                setLanguages(res.data.languages);
+                setGenres(resData.genres);
+                setLanguages(resData.languages);
                 setLoading(false);
             });
         } else {
             Promise.all([
-                apiClient.get('/genres'),
-                apiClient.get('/languages'),
+                lookupCache.getGenres(),
+                lookupCache.getLanguages(),
             ]).then(([g, l]) => {
-                setGenres(g.data.data);
-                setLanguages(l.data.data);
+                setGenres(g);
+                setLanguages(l);
             });
         }
-    }, [isbn]);
+    }, [isbn, isEdit]);
 
     const updateField = (field) => (e) => {
         setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -69,8 +70,12 @@ export default function AdminBookEditPage() {
         if (debounceRef.current) clearTimeout(debounceRef.current);
         if (value.length < 2) { setAuthorSuggestions([]); return; }
         debounceRef.current = setTimeout(async () => {
-            const res = await apiClient.get('/admin/authors-search', { params: { q: value } });
-            setAuthorSuggestions(res.data.data);
+            try {
+                const resData = await bookService.adminSearchAuthors(value);
+                setAuthorSuggestions(resData.data);
+            } catch (err) {
+                console.error("Error searching authors:", err);
+            }
         }, 300);
     };
 
@@ -99,10 +104,8 @@ export default function AdminBookEditPage() {
         if (coverFile) formData.append('cover', coverFile);
 
         try {
-            const res = await apiClient.post('/admin/books', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
-            setMessage(res.data.message);
+            const resData = await bookService.adminSaveBook(formData);
+            setMessage(resData.message);
             setTimeout(() => navigate('/admin/books'), 1000);
         } catch (error) {
             if (error.response?.status === 422) setErrors(error.response.data.errors || {});

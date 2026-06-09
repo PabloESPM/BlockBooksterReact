@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import apiClient from '../../api/client';
+import reviewService from '../../services/reviewService';
 import ReviewCard from '../../components/cards/ReviewCard';
 
 /**
@@ -11,20 +11,37 @@ export default function DashboardReviewsPage() {
     const [reviews, setReviews] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const loadReviews = () => {
-        apiClient.get('/dashboard/reviews').then((res) => {
-            setReviews(res.data.data);
+    const loadReviews = useCallback(() => {
+        reviewService.getDashboardReviews().then((resData) => {
+            setReviews(resData.data);
             setLoading(false);
         });
-    };
+    }, []);
 
-    useEffect(() => { loadReviews(); }, []);
+    useEffect(() => { 
+        loadReviews(); 
+    }, [loadReviews]);
+
+    useEffect(() => {
+        const handleEventUpdate = () => {
+            loadReviews();
+        };
+        window.addEventListener('review-saved', handleEventUpdate);
+        return () => {
+            window.removeEventListener('review-saved', handleEventUpdate);
+        };
+    }, [loadReviews]);
 
     const handleDelete = async (review) => {
         if (!confirm('¿Seguro que quieres eliminar esta reseña?')) return;
         try {
-            await apiClient.delete(`/reviews/${review.id}`);
+            await reviewService.deleteReview(review.id);
             loadReviews();
+            
+            // Dispatch event for other pages displaying reviews count
+            window.dispatchEvent(new CustomEvent('review-saved', { 
+                detail: { isbn: review.book_isbn || review.book?.isbn, reviewId: review.id, action: 'deleted' } 
+            }));
         } catch (err) {
             console.error('Error deleting review:', err);
         }

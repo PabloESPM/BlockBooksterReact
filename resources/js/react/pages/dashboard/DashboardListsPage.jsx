@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import apiClient from '../../api/client';
+import listService from '../../services/listService';
 import ListCard from '../../components/cards/ListCard';
 
 /**
@@ -17,32 +17,47 @@ export default function DashboardListsPage() {
         followed: false,
     });
 
-    const loadData = (limits = {}) => {
+    const loadData = useCallback((limits = {}) => {
         const params = {
             created_limit: limits.createdLimit ?? createdLimit,
             followed_limit: limits.followedLimit ?? followedLimit,
         };
-        return apiClient.get('/dashboard/lists', { params })
-            .then((res) => {
-                setData(res.data);
+        return listService.getDashboardLists(params)
+            .then((resData) => {
+                setData(resData);
             })
             .catch((err) => {
                 console.error('Error loading dashboard lists data:', err);
             });
-    };
+    }, [createdLimit, followedLimit]);
 
     useEffect(() => {
         setLoading(true);
         loadData().finally(() => {
             setLoading(false);
         });
-    }, []);
+    }, [loadData]);
+
+    useEffect(() => {
+        const handleEventUpdate = () => {
+            loadData();
+        };
+        window.addEventListener('list-updated', handleEventUpdate);
+        return () => {
+            window.removeEventListener('list-updated', handleEventUpdate);
+        };
+    }, [loadData]);
 
     const handleDelete = async (listId) => {
         if (!confirm('¿Seguro que quieres eliminar esta lista?')) return;
         try {
-            await apiClient.delete(`/lists/${listId}`);
+            await listService.deleteList(listId);
             await loadData();
+            
+            // Dispatch event to sync listing in case other pages display lists count
+            window.dispatchEvent(new CustomEvent('list-updated', {
+                detail: { listId, action: 'deleted' }
+            }));
         } catch (err) {
             console.error('Error deleting list:', err);
         }

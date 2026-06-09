@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import apiClient from '../../api/client';
+import userService from '../../services/userService';
 import UserCard from '../../components/cards/UserCard';
 
 /**
@@ -10,10 +10,43 @@ export default function CommunityPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        apiClient.get('/community').then((res) => {
-            setData(res.data);
+        userService.getCommunityData().then((resData) => {
+            setData(resData);
             setLoading(false);
         });
+    }, []);
+
+    useEffect(() => {
+        const handleFollowUpdated = (e) => {
+            const { type, id, following: isFollowing, count } = e.detail;
+
+            if (type !== 'user') return;
+
+            setData((prev) => {
+                if (!prev) return null;
+
+                const updateList = (list) => {
+                    if (!list) return [];
+                    return list.map(user => 
+                        user.id === id 
+                            ? { ...user, is_following: isFollowing, followers_count: count }
+                            : user
+                    );
+                };
+
+                return {
+                    ...prev,
+                    most_followed: updateList(prev.most_followed),
+                    top_curators: updateList(prev.top_curators),
+                    most_active: updateList(prev.most_active),
+                };
+            });
+        };
+
+        window.addEventListener('follow-updated', handleFollowUpdated);
+        return () => {
+            window.removeEventListener('follow-updated', handleFollowUpdated);
+        };
     }, []);
 
     if (loading) {

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import apiClient from '../../api/client';
+import userService from '../../services/userService';
+import bookService from '../../services/bookService';
 import { useAuth } from '../../context/AuthContext';
 import { formatDate } from '../../utils/formatDate';
 
@@ -14,29 +15,48 @@ export default function DashboardIndexPage() {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState({}); // { [isbn]: 'read' | 'pending' }
 
-    const loadDashboardData = () => {
-        apiClient.get('/dashboard')
-            .then((res) => {
-                setData(res.data);
+    const loadDashboardData = useCallback(() => {
+        userService.getDashboard()
+            .then((resData) => {
+                setData(resData);
                 setLoading(false);
             })
             .catch((err) => {
                 console.error('Error loading dashboard index data:', err);
                 setLoading(false);
             });
-    };
+    }, []);
 
     useEffect(() => {
         setLoading(true);
         loadDashboardData();
-    }, []);
+    }, [loadDashboardData]);
+
+    useEffect(() => {
+        const handleEventUpdate = () => {
+            loadDashboardData();
+        };
+        window.addEventListener('book-status-updated', handleEventUpdate);
+        window.addEventListener('review-saved', handleEventUpdate);
+        window.addEventListener('list-updated', handleEventUpdate);
+        return () => {
+            window.removeEventListener('book-status-updated', handleEventUpdate);
+            window.removeEventListener('review-saved', handleEventUpdate);
+            window.removeEventListener('list-updated', handleEventUpdate);
+        };
+    }, [loadDashboardData]);
 
     const handleStatusChange = async (isbn, status) => {
         setActionLoading((prev) => ({ ...prev, [isbn]: status }));
         try {
-            await apiClient.post(`/books/${isbn}/status`, { status });
+            await bookService.updateBookStatus(isbn, status);
             // Recargar datos reactivamente tras la actualización
             loadDashboardData();
+            
+            // Dispatch event for BookShowPage or other pages
+            window.dispatchEvent(new CustomEvent('book-status-updated', {
+                detail: { isbn, status }
+            }));
         } catch (error) {
             console.error('Error updating book reading status:', error);
         } finally {

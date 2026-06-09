@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import apiClient from '../../api/client';
+import listService from '../../services/listService';
 import { useAuth } from '../../context/AuthContext';
 
 /**
@@ -27,9 +27,9 @@ export default function AddToListModal() {
     const fetchUserLists = async () => {
         setLoadingLists(true);
         try {
-            const res = await apiClient.get('/dashboard/lists');
+            const data = await listService.getDashboardLists();
             // La API devuelve { created: [...], followed: [...] }
-            setUserLists(res.data.created || []);
+            setUserLists(data.created || []);
         } catch (err) {
             console.error('Error fetching user lists:', err);
         } finally {
@@ -95,11 +95,11 @@ export default function AddToListModal() {
         setSubmitting(true);
 
         try {
-            const res = await apiClient.post(`/lists/${listId}/books`, {
-                book_isbn: bookIsbn
-            });
+            await listService.addBookToList(listId, bookIsbn);
             closeModal();
-            window.location.reload();
+            window.dispatchEvent(new CustomEvent('list-updated', { 
+                detail: { isbn: bookIsbn, listId, action: 'attached' } 
+            }));
         } catch (err) {
             if (err.response?.status === 409) {
                 alert(err.response.data.message || 'El libro ya está en esta lista.');
@@ -125,10 +125,10 @@ export default function AddToListModal() {
         }
 
         try {
-            let res;
+            let resData;
             if (bookIsbn) {
                 // Crear y agregar el libro inmediatamente
-                res = await apiClient.post('/lists/store-and-attach', {
+                resData = await listService.createListAndAttach({
                     name,
                     description: description || null,
                     visibility,
@@ -136,7 +136,7 @@ export default function AddToListModal() {
                 });
             } else {
                 // Crear lista vacía
-                res = await apiClient.post('/lists', {
+                resData = await listService.createList({
                     name,
                     description: description || null,
                     visibility
@@ -144,7 +144,9 @@ export default function AddToListModal() {
             }
 
             closeModal();
-            window.location.reload();
+            window.dispatchEvent(new CustomEvent('list-updated', { 
+                detail: { isbn: bookIsbn, listId: resData?.data?.id || null, data: resData } 
+            }));
         } catch (err) {
             if (err.response?.status === 422) {
                 setErrors(err.response.data.errors || {});

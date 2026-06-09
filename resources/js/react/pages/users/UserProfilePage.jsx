@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import apiClient from '../../api/client';
+import userService from '../../services/userService';
 import BookCard from '../../components/cards/BookCard';
 import ReviewCard from '../../components/cards/ReviewCard';
 import ListCard from '../../components/cards/ListCard';
@@ -47,17 +47,95 @@ export default function UserProfilePage() {
     const [loadingFollowers, setLoadingFollowers] = useState(false);
 
     // Cargar perfil
-    const loadProfile = () => {
+    const loadProfile = useCallback(() => {
         setLoading(true);
-        apiClient.get(`/users/${id}`).then((res) => {
-            setProfile(res.data.data);
-            setBookStats(res.data.book_stats);
+        userService.getUserProfile(id).then((resData) => {
+            setProfile(resData.data);
+            setBookStats(resData.book_stats);
+            setLoading(false);
+        }).catch((err) => {
+            console.error('Error loading user profile:', err);
             setLoading(false);
         });
-    };
+    }, [id]);
 
     useEffect(() => {
         loadProfile();
+    }, [loadProfile]);
+
+    // Carga de Listas
+    const loadCreatedLists = useCallback((page) => {
+        userService.getUserLists(id, { type: 'created', page }).then((resData) => {
+            setCreatedLists({ data: resData.data, meta: resData.meta });
+        });
+    }, [id]);
+
+    const loadFollowedLists = useCallback((page) => {
+        userService.getUserLists(id, { type: 'followed', page }).then((resData) => {
+            setFollowedLists({ data: resData.data, meta: resData.meta });
+        });
+    }, [id]);
+
+    // Carga de Social (con append para "Cargar más")
+    const loadFollowedAuthors = useCallback((page) => {
+        setLoadingFollowedAuthors(true);
+        userService.getUserAuthors(id, { page }).then((resData) => {
+            if (page === 1) {
+                setFollowedAuthors(resData.data);
+            } else {
+                setFollowedAuthors((prev) => [...prev, ...resData.data]);
+            }
+            setHasMoreFollowedAuthors(resData.meta.current_page < resData.meta.last_page);
+            setFollowedAuthorsPage(page);
+            setLoadingFollowedAuthors(false);
+        });
+    }, [id]);
+
+    const loadFollowing = useCallback((page) => {
+        setLoadingFollowing(true);
+        userService.getUserFollowing(id, { page }).then((resData) => {
+            if (page === 1) {
+                setFollowing(resData.data);
+            } else {
+                setFollowing((prev) => [...prev, ...resData.data]);
+            }
+            setHasMoreFollowing(resData.meta.current_page < resData.meta.last_page);
+            setFollowingPage(page);
+            setLoadingFollowing(false);
+        });
+    }, [id]);
+
+    const loadFollowers = useCallback((page) => {
+        setLoadingFollowers(true);
+        userService.getUserFollowers(id, { page }).then((resData) => {
+            if (page === 1) {
+                setFollowers(resData.data);
+            } else {
+                setFollowers((prev) => [...prev, ...resData.data]);
+            }
+            setHasMoreFollowers(resData.meta.current_page < resData.meta.last_page);
+            setFollowersPage(page);
+            setLoadingFollowers(false);
+        });
+    }, [id]);
+
+    const loadTabData = useCallback((tab, page) => {
+        let fetchPromise;
+        switch (tab) {
+            case 'read':
+            case 'reading':
+            case 'pending':
+                fetchPromise = userService.getUserBooks(id, { status: tab, page });
+                break;
+            case 'reviews':
+                fetchPromise = userService.getUserReviews(id, { page });
+                break;
+            default:
+                return;
+        }
+        fetchPromise.then((resData) => {
+            setTabData({ data: resData.data, meta: resData.meta });
+        });
     }, [id]);
 
     // Cargar datos de la pestaña activa (excepto listas y social que tienen carga propia)
@@ -66,20 +144,7 @@ export default function UserProfilePage() {
         if (!['lists', 'social'].includes(activeTab)) {
             loadTabData(activeTab, 1);
         }
-    }, [activeTab, canView, loading, id]);
-
-    // Carga de Listas
-    const loadCreatedLists = (page) => {
-        apiClient.get(`/users/${id}/lists?type=created&page=${page}`).then((res) => {
-            setCreatedLists({ data: res.data.data, meta: res.data.meta });
-        });
-    };
-
-    const loadFollowedLists = (page) => {
-        apiClient.get(`/users/${id}/lists?type=followed&page=${page}`).then((res) => {
-            setFollowedLists({ data: res.data.data, meta: res.data.meta });
-        });
-    };
+    }, [activeTab, canView, loading, loadTabData]);
 
     useEffect(() => {
         if (!canView || loading) return;
@@ -89,50 +154,7 @@ export default function UserProfilePage() {
                 loadFollowedLists(1);
             }
         }
-    }, [activeTab, canView, loading, id, profile]);
-
-    // Carga de Social (con append para "Cargar más")
-    const loadFollowedAuthors = (page) => {
-        setLoadingFollowedAuthors(true);
-        apiClient.get(`/users/${id}/authors?page=${page}`).then((res) => {
-            if (page === 1) {
-                setFollowedAuthors(res.data.data);
-            } else {
-                setFollowedAuthors((prev) => [...prev, ...res.data.data]);
-            }
-            setHasMoreFollowedAuthors(res.data.meta.current_page < res.data.meta.last_page);
-            setFollowedAuthorsPage(page);
-            setLoadingFollowedAuthors(false);
-        });
-    };
-
-    const loadFollowing = (page) => {
-        setLoadingFollowing(true);
-        apiClient.get(`/users/${id}/following?page=${page}`).then((res) => {
-            if (page === 1) {
-                setFollowing(res.data.data);
-            } else {
-                setFollowing((prev) => [...prev, ...res.data.data]);
-            }
-            setHasMoreFollowing(res.data.meta.current_page < res.data.meta.last_page);
-            setFollowingPage(page);
-            setLoadingFollowing(false);
-        });
-    };
-
-    const loadFollowers = (page) => {
-        setLoadingFollowers(true);
-        apiClient.get(`/users/${id}/followers?page=${page}`).then((res) => {
-            if (page === 1) {
-                setFollowers(res.data.data);
-            } else {
-                setFollowers((prev) => [...prev, ...res.data.data]);
-            }
-            setHasMoreFollowers(res.data.meta.current_page < res.data.meta.last_page);
-            setFollowersPage(page);
-            setLoadingFollowers(false);
-        });
-    };
+    }, [activeTab, canView, loading, profile?.profile_visibility, loadCreatedLists, loadFollowedLists]);
 
     useEffect(() => {
         if (!canView || loading) return;
@@ -141,26 +163,87 @@ export default function UserProfilePage() {
             loadFollowing(1);
             loadFollowers(1);
         }
-    }, [activeTab, canView, loading, id]);
+    }, [activeTab, canView, loading, loadFollowedAuthors, loadFollowing, loadFollowers]);
 
-    const loadTabData = (tab, page) => {
-        let endpoint;
-        switch (tab) {
-            case 'read':
-            case 'reading':
-            case 'pending':
-                endpoint = `/users/${id}/books?status=${tab}&page=${page}`;
-                break;
-            case 'reviews':
-                endpoint = `/users/${id}/reviews?page=${page}`;
-                break;
-            default:
-                return;
-        }
-        apiClient.get(endpoint).then((res) => {
-            setTabData({ data: res.data.data, meta: res.data.meta });
-        });
-    };
+    // Escuchar eventos en tiempo real (SPA reactivo)
+    useEffect(() => {
+        const handleEventUpdate = () => {
+            loadProfile();
+            if (!['lists', 'social'].includes(activeTab)) {
+                loadTabData(activeTab, 1);
+            } else if (activeTab === 'lists') {
+                loadCreatedLists(1);
+                if (profile?.profile_visibility === 'public') {
+                    loadFollowedLists(1);
+                }
+            } else if (activeTab === 'social') {
+                loadFollowedAuthors(1);
+                loadFollowing(1);
+                loadFollowers(1);
+            }
+        };
+
+        window.addEventListener('list-updated', handleEventUpdate);
+        window.addEventListener('review-saved', handleEventUpdate);
+        window.addEventListener('book-status-updated', handleEventUpdate);
+
+        return () => {
+            window.removeEventListener('list-updated', handleEventUpdate);
+            window.removeEventListener('review-saved', handleEventUpdate);
+            window.removeEventListener('book-status-updated', handleEventUpdate);
+        };
+    }, [loadProfile, loadTabData, loadCreatedLists, loadFollowedLists, loadFollowedAuthors, loadFollowing, loadFollowers, activeTab, profile?.profile_visibility]);
+
+    // Escuchar actualizaciones de seguimiento (follow-updated)
+    useEffect(() => {
+        const handleFollowUpdated = (e) => {
+            const { type, id, following: isFollowing, count } = e.detail;
+
+            // 1. Si se actualizó el follow de este perfil
+            if (type === 'user' && profile && id === profile.id) {
+                setProfile(prev => prev ? {
+                    ...prev,
+                    is_following: isFollowing,
+                    followers_count: count
+                } : null);
+            }
+
+            // 2. Si el usuario logueado es dueño de este perfil y sigue/deja de seguir a alguien
+            if (isOwner && type === 'user') {
+                setProfile(prev => {
+                    if (!prev) return null;
+                    const prevCount = prev.following_count || 0;
+                    const newCount = isFollowing ? prevCount + 1 : Math.max(0, prevCount - 1);
+                    return { ...prev, following_count: newCount };
+                });
+            }
+
+            // 3. Actualizar listas de relaciones
+            if (type === 'user') {
+                setFollowing(prev => {
+                    if (isOwner && !isFollowing) {
+                        return prev.filter(u => u.id !== id);
+                    }
+                    return prev.map(u => u.id === id ? { ...u, is_following: isFollowing, followers_count: count } : u);
+                });
+                setFollowers(prev => {
+                    return prev.map(u => u.id === id ? { ...u, is_following: isFollowing, followers_count: count } : u);
+                });
+            } else if (type === 'author') {
+                setFollowedAuthors(prev => {
+                    if (isOwner && !isFollowing) {
+                        return prev.filter(a => a.id !== id);
+                    }
+                    return prev.map(a => a.id === id ? { ...a, is_following: isFollowing, followers_count: count } : a);
+                });
+            }
+        };
+
+        window.addEventListener('follow-updated', handleFollowUpdated);
+        return () => {
+            window.removeEventListener('follow-updated', handleFollowUpdated);
+        };
+    }, [profile, isOwner]);
 
     if (loading) return <div className="flex justify-center py-20"><div className="neo-spinner"></div></div>;
     if (!profile) return <div className="text-center py-12 font-bold">Usuario no encontrado</div>;

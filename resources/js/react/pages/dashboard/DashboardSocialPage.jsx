@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import apiClient from '../../api/client';
+import userService from '../../services/userService';
 import UserCard from '../../components/cards/UserCard';
 import AuthorCard from '../../components/cards/AuthorCard';
 
@@ -26,9 +26,9 @@ export default function DashboardSocialPage() {
             following_limit: limits.followingLimit ?? followingLimit,
             followers_limit: limits.followersLimit ?? followersLimit,
         };
-        return apiClient.get('/dashboard/social', { params })
-            .then((res) => {
-                setData(res.data);
+        return userService.getDashboardSocial(params)
+            .then((resData) => {
+                setData(resData);
             })
             .catch((err) => {
                 console.error('Error fetching social connections:', err);
@@ -40,6 +40,74 @@ export default function DashboardSocialPage() {
         loadData().finally(() => {
             setLoading(false);
         });
+    }, []);
+
+    // Escuchar actualizaciones de seguimiento (follow-updated)
+    useEffect(() => {
+        const handleFollowUpdated = (e) => {
+            const { type, id, following: isFollowing, count } = e.detail;
+
+            setData((prev) => {
+                if (!prev) return null;
+
+                let updatedFollowedAuthors = prev.followed_authors || [];
+                let updatedTotalAuthors = prev.total_authors ?? 0;
+                let updatedFollowing = prev.following || [];
+                let updatedFollowingCount = prev.following_count ?? 0;
+                let updatedFollowers = prev.followers || [];
+
+                if (type === 'author') {
+                    if (!isFollowing) {
+                        const originalLen = updatedFollowedAuthors.length;
+                        updatedFollowedAuthors = updatedFollowedAuthors.filter(a => a.id !== id);
+                        const removedCount = originalLen - updatedFollowedAuthors.length;
+                        updatedTotalAuthors = Math.max(0, updatedTotalAuthors - removedCount);
+                    } else {
+                        const exists = updatedFollowedAuthors.some(a => a.id === id);
+                        if (!exists) {
+                            updatedTotalAuthors += 1;
+                        }
+                        updatedFollowedAuthors = updatedFollowedAuthors.map(a => 
+                            a.id === id ? { ...a, is_following: isFollowing, followers_count: count } : a
+                        );
+                    }
+                } else if (type === 'user') {
+                    if (!isFollowing) {
+                        const originalLen = updatedFollowing.length;
+                        updatedFollowing = updatedFollowing.filter(u => u.id !== id);
+                        const removedCount = originalLen - updatedFollowing.length;
+                        updatedFollowingCount = Math.max(0, updatedFollowingCount - removedCount);
+                    } else {
+                        const exists = updatedFollowing.some(u => u.id === id);
+                        if (!exists) {
+                            updatedFollowingCount += 1;
+                        }
+                        updatedFollowing = updatedFollowing.map(u => 
+                            u.id === id ? { ...u, is_following: isFollowing, followers_count: count } : u
+                        );
+                    }
+
+                    // Actualizar también la lista de seguidores si está ahí
+                    updatedFollowers = updatedFollowers.map(u => 
+                        u.id === id ? { ...u, is_following: isFollowing, followers_count: count } : u
+                    );
+                }
+
+                return {
+                    ...prev,
+                    followed_authors: updatedFollowedAuthors,
+                    total_authors: updatedTotalAuthors,
+                    following: updatedFollowing,
+                    following_count: updatedFollowingCount,
+                    followers: updatedFollowers,
+                };
+            });
+        };
+
+        window.addEventListener('follow-updated', handleFollowUpdated);
+        return () => {
+            window.removeEventListener('follow-updated', handleFollowUpdated);
+        };
     }, []);
 
     const handleLoadMore = async (section) => {

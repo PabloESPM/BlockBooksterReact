@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import apiClient from '../../api/client';
+import bookService from '../../services/bookService';
+import lookupCache from '../../utils/lookupCache';
 import BookCard from '../../components/cards/BookCard';
 import Pagination from '../../components/ui/Pagination';
 import AdvancedSearch from '../../components/books/AdvancedSearch';
@@ -18,35 +19,46 @@ export default function BooksIndexPage() {
     const [loading, setLoading] = useState(true);
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
-    // Cargar datos de filtros iniciales (géneros, idiomas, países)
+    // Cargar datos de filtros iniciales (géneros, idiomas, países) usando la caché en sessionStorage
     useEffect(() => {
         Promise.all([
-            apiClient.get('/genres'),
-            apiClient.get('/languages'),
-            apiClient.get('/countries'),
-        ]).then(([g, l, c]) => {
+            lookupCache.getGenres(),
+            lookupCache.getLanguages(),
+            lookupCache.getCountries(),
+        ]).then(([genres, languages, countries]) => {
             setFilters({
-                genres: g.data.data || [],
-                languages: l.data.data || [],
-                countries: c.data.data || [],
+                genres: genres || [],
+                languages: languages || [],
+                countries: countries || [],
             });
         }).catch((err) => {
             console.error('Error loading filters meta data:', err);
         });
     }, []);
 
-    // Cargar listado de libros según parámetros de búsqueda de la URL
+    // Cargar listado de libros según parámetros de búsqueda de la URL con AbortController para prevenir race conditions
     useEffect(() => {
         setLoading(true);
-        apiClient.get('/books', { params: Object.fromEntries(searchParams) })
-            .then((res) => {
-                setBooks(res.data.data || []);
-                setMeta(res.data.meta || null);
+        const controller = new AbortController();
+
+        bookService.getBooks(Object.fromEntries(searchParams), { signal: controller.signal })
+            .then((resData) => {
+                setBooks(resData.data || []);
+                setMeta(resData.meta || null);
+                setLoading(false);
             })
             .catch((err) => {
+                if (err.name === 'CanceledError' || err.name === 'AbortError' || err.message === 'canceled') {
+                    // Ignorar error de cancelación intencionada
+                    return;
+                }
                 console.error('Error fetching filtered books:', err);
-            })
-            .finally(() => setLoading(false));
+                setLoading(false);
+            });
+
+        return () => {
+            controller.abort();
+        };
     }, [searchParams]);
 
     // Actualizar un filtro específico en la URL

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import apiClient from '../../api/client';
+import userService from '../../services/userService';
+import listService from '../../services/listService';
 
 /**
  * Botón de seguir/dejar de seguir con estado y feedback inmediato.
@@ -22,12 +23,6 @@ export default function FollowButton({
     const [count, setCount] = useState(initialCount);
     const [loading, setLoading] = useState(false);
 
-    const endpointMap = {
-        user: `/users/${id}/follow`,
-        author: `/authors/${id}/follow`,
-        list: `/lists/${id}/follow`,
-    };
-
     const handleToggle = async () => {
         if (!isAuthenticated) {
             window.location.href = '/login';
@@ -36,10 +31,21 @@ export default function FollowButton({
 
         setLoading(true);
         try {
-            const res = await apiClient.post(endpointMap[type]);
-            setFollowing(res.data.following);
-            setCount(res.data.followers_count ?? res.data.likes_count ?? count);
-            onToggle?.(res.data);
+            let data;
+            if (type === 'user') {
+                data = await userService.toggleFollowUser(id);
+            } else if (type === 'author') {
+                data = await userService.toggleFollowAuthor(id);
+            } else if (type === 'list') {
+                data = await listService.toggleFollowList(id);
+            }
+            
+            setFollowing(data.following);
+            setCount(data.followers_count ?? data.likes_count ?? count);
+            onToggle?.(data);
+            window.dispatchEvent(new CustomEvent('follow-updated', {
+                detail: { type, id, following: data.following, count: data.followers_count ?? data.likes_count ?? count, data }
+            }));
         } catch (error) {
             console.error('Error al seguir/dejar de seguir:', error);
         } finally {

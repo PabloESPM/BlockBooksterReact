@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import apiClient from '../../api/client';
+import reviewService from '../../services/reviewService';
+import listService from '../../services/listService';
 
 /**
  * Botón de like para reseñas y listas.
@@ -22,11 +23,6 @@ export default function LikeButton({
     const [count, setCount] = useState(initialCount);
     const [loading, setLoading] = useState(false);
 
-    const endpointMap = {
-        review: `/reviews/${id}/like`,
-        list: `/lists/${id}/like`,
-    };
-
     const handleToggle = async (e) => {
         if (e) {
             e.preventDefault();
@@ -42,9 +38,14 @@ export default function LikeButton({
 
         setLoading(true);
         try {
-            const res = await apiClient.post(endpointMap[type]);
-            setLiked(res.data.status === 'liked');
-            setCount(res.data.likes_count);
+            let data;
+            if (type === 'review') {
+                data = await reviewService.toggleLikeReview(id);
+            } else if (type === 'list') {
+                data = await listService.toggleLikeList(id);
+            }
+            setLiked(data.status === 'liked');
+            setCount(data.likes_count);
         } catch (error) {
             console.error('Error al dar like:', error);
         } finally {

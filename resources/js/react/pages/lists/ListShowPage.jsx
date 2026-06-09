@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import apiClient from '../../api/client';
+import listService from '../../services/listService';
 import BookCard from '../../components/cards/BookCard';
 import LikeButton from '../../components/ui/LikeButton';
 import { useAuth } from '../../context/AuthContext';
@@ -25,13 +25,13 @@ export default function ListShowPage() {
     const [errors, setErrors] = useState({});
     const [successMessage, setSuccessMessage] = useState('');
 
-    const fetchList = () => {
-        apiClient.get(`/lists/${id}`)
-            .then((res) => {
-                setList(res.data.data);
-                setName(res.data.data.name || '');
-                setDescription(res.data.data.description || '');
-                setVisibility(res.data.data.visibility || 'public');
+    const fetchList = useCallback(() => {
+        listService.getListDetails(id)
+            .then((resData) => {
+                setList(resData.data);
+                setName(resData.data.name || '');
+                setDescription(resData.data.description || '');
+                setVisibility(resData.data.visibility || 'public');
                 setErrorStatus(null);
             })
             .catch((err) => {
@@ -42,13 +42,23 @@ export default function ListShowPage() {
             .finally(() => {
                 setLoading(false);
             });
-    };
+    }, [id]);
 
     useEffect(() => {
         setLoading(true);
         setErrorStatus(null);
         fetchList();
-    }, [id]);
+    }, [fetchList]);
+
+    useEffect(() => {
+        const handleEventUpdate = () => {
+            fetchList();
+        };
+        window.addEventListener('list-updated', handleEventUpdate);
+        return () => {
+            window.removeEventListener('list-updated', handleEventUpdate);
+        };
+    }, [fetchList]);
 
     const handleShare = () => {
         const shareData = {
@@ -69,16 +79,21 @@ export default function ListShowPage() {
         setErrors({});
 
         try {
-            const res = await apiClient.put(`/lists/${id}`, {
+            const resData = await listService.updateList(id, {
                 name,
                 description,
                 visibility
             });
-            setList(res.data.data);
-            setSuccessMessage(res.data.message || '¡Lista actualizada correctamente!');
+            setList(resData.data);
+            setSuccessMessage(resData.message || '¡Lista actualizada correctamente!');
             setShowEditModal(false);
             // Ocultar mensaje automáticamente
             setTimeout(() => setSuccessMessage(''), 5000);
+            
+            // Dispatch event so lists display elsewhere updates
+            window.dispatchEvent(new CustomEvent('list-updated', {
+                detail: { listId: id, data: resData }
+            }));
         } catch (err) {
             if (err.response?.status === 422) {
                 setErrors(err.response.data.errors || {});

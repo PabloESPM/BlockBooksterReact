@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import apiClient from '../../api/client';
+import bookService from '../../services/bookService';
+import reviewService from '../../services/reviewService';
 import ReviewCard from '../../components/cards/ReviewCard';
 import Pagination from '../../components/ui/Pagination';
 import { useAuth } from '../../context/AuthContext';
@@ -25,18 +26,22 @@ export default function BookShowPage() {
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [buyDropdownOpen, setBuyDropdownOpen] = useState(false);
 
-    const loadBook = () => {
-        apiClient.get(`/books/${isbn}`, { params: { page: reviewPage } })
-            .then((res) => {
-                setBook(res.data.data);
-                setReviews({ data: res.data.reviews.data, meta: res.data.reviews.meta });
-                setRelatedAuthors(res.data.related_authors || []);
-                setRelatedBooks(res.data.related_books || []);
-                setUserBook(res.data.data.user_book || null);
-                setMyReview(res.data.my_review || null);
+    const loadBook = useCallback(() => {
+        bookService.getBookDetails(isbn, reviewPage)
+            .then((resData) => {
+                setBook(resData.data);
+                setReviews({ data: resData.reviews.data, meta: resData.reviews.meta });
+                setRelatedAuthors(resData.related_authors || []);
+                setRelatedBooks(resData.related_books || []);
+                setUserBook(resData.data.user_book || null);
+                setMyReview(resData.my_review || null);
+                setLoading(false);
+            })
+            .catch((err) => {
+                console.error("Error loading book details:", err);
                 setLoading(false);
             });
-    };
+    }, [isbn, reviewPage]);
 
     const handleUpdateStatus = async (status) => {
         if (!isAuthenticated) {
@@ -45,11 +50,16 @@ export default function BookShowPage() {
         }
         setUpdatingStatus(true);
         try {
-            const res = await apiClient.post(`/books/${isbn}/status`, { status });
-            setUserBook(res.data.user_book);
+            const resData = await bookService.updateBookStatus(isbn, status);
+            setUserBook(resData.user_book);
             setBook((prev) => ({
                 ...prev,
-                user_book: res.data.user_book,
+                user_book: resData.user_book,
+            }));
+            
+            // Dispatch dynamic status change event for other pages (like dashboard)
+            window.dispatchEvent(new CustomEvent('book-status-updated', {
+                detail: { isbn, status, data: resData }
             }));
         } catch (err) {
             console.error("Error updating status:", err);
@@ -84,15 +94,34 @@ export default function BookShowPage() {
     const handleDeleteReview = async (review) => {
         if (!confirm('¿Estás seguro de que quieres eliminar esta reseña?')) return;
         try {
-            await apiClient.delete(`/reviews/${review.id}`);
+            await reviewService.deleteReview(review.id);
             loadBook();
+            
+            // Dispatch event to update reviews count elsewhere
+            window.dispatchEvent(new CustomEvent('review-saved', { 
+                detail: { isbn, reviewId: review.id, action: 'deleted' } 
+            }));
         } catch (err) {
             console.error("Error deleting review:", err);
             alert('Error al eliminar la reseña.');
         }
     };
 
-    useEffect(() => { loadBook(); }, [isbn, reviewPage]);
+    useEffect(() => { 
+        loadBook(); 
+    }, [loadBook]);
+
+    useEffect(() => {
+        const handleEventUpdate = () => {
+            loadBook();
+        };
+        window.addEventListener('review-saved', handleEventUpdate);
+        window.addEventListener('list-updated', handleEventUpdate);
+        return () => {
+            window.removeEventListener('review-saved', handleEventUpdate);
+            window.removeEventListener('list-updated', handleEventUpdate);
+        };
+    }, [loadBook]);
 
     if (loading) {
         return (

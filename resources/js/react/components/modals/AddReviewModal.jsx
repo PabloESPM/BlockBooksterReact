@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import apiClient from '../../api/client';
+import reviewService from '../../services/reviewService';
 import { useAuth } from '../../context/AuthContext';
 
 /**
@@ -98,14 +98,15 @@ export default function AddReviewModal() {
         }
 
         try {
+            let resData;
             if (reviewId) {
-                await apiClient.put(`/reviews/${reviewId}`, {
+                resData = await reviewService.updateReview(reviewId, {
                     title: title || null,
                     rating: rating,
                     body: body,
                 });
             } else {
-                await apiClient.post('/reviews', {
+                resData = await reviewService.createReview({
                     book_isbn: bookIsbn,
                     title: title || null,
                     rating: rating,
@@ -114,7 +115,9 @@ export default function AddReviewModal() {
             }
 
             closeModal();
-            window.location.reload();
+            window.dispatchEvent(new CustomEvent('review-saved', { 
+                detail: { isbn: bookIsbn, reviewId, data: resData } 
+            }));
         } catch (err) {
             if (err.response?.status === 422) {
                 setErrors(err.response.data.errors || {});

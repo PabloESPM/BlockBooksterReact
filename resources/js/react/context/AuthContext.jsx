@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import apiClient from '../api/client';
+import authService from '../services/authService';
 
 const AuthContext = createContext(null);
 
@@ -10,8 +10,8 @@ export function AuthProvider({ children }) {
     // Carga el usuario autenticado al montar el componente
     const fetchUser = useCallback(async () => {
         try {
-            const response = await apiClient.get('/auth/user');
-            setUser(response.data.data);
+            const data = await authService.getUser();
+            setUser(data);
         } catch {
             setUser(null);
         } finally {
@@ -24,22 +24,20 @@ export function AuthProvider({ children }) {
     }, [fetchUser]);
 
     const login = async (email, password) => {
-        await apiClient.get('/sanctum/csrf-cookie', { baseURL: '' });
-        const response = await apiClient.post('/auth/login', { email, password });
-        setUser(response.data.data);
-        return response.data;
+        const data = await authService.login(email, password);
+        setUser(data.data);
+        return data;
     };
 
     const register = async (data) => {
-        await apiClient.get('/sanctum/csrf-cookie', { baseURL: '' });
-        const response = await apiClient.post('/auth/register', data);
-        setUser(response.data.data);
-        return response.data;
+        const resData = await authService.register(data);
+        setUser(resData.data);
+        return resData;
     };
 
     const logout = async () => {
         try {
-            await apiClient.post('/auth/logout');
+            await authService.logout();
         } catch (error) {
             console.error('Logout error on backend:', error);
         } finally {
