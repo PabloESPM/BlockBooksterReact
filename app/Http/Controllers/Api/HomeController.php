@@ -65,16 +65,18 @@ class HomeController extends Controller
             }
 
             // 4. Listas destacadas (públicas, más likes en los últimos 30 días, Top 4)
+            // Listas destacadas optimizadas para PostgreSQL
             $featuredLists = FavList::select('fav_lists.*')
                 ->where('visibility', 'public')
                 ->with(['user', 'likes', 'books' => fn ($q) => $q->take(5)])
                 ->withCount(['books', 'likes'])
-                ->leftJoin('list_likes', function ($join) {
-                    $join->on('fav_lists.id', '=', 'list_likes.list_id')
-                        ->where('list_likes.created_at', '>=', now()->subDays(30));
-                })
-                ->groupBy('fav_lists.id')
-                ->orderByDesc(DB::raw('COUNT(list_likes.id)'))
+                ->addSelect([
+                    'recent_likes_count' => DB::table('list_likes')
+                        ->selectRaw('count(*)')
+                        ->whereColumn('list_likes.list_id', 'fav_lists.id')
+                        ->where('list_likes.created_at', '>=', now()->subDays(30))
+                ])
+                ->orderByDesc('recent_likes_count')
                 ->take(4)
                 ->get();
 
@@ -104,6 +106,7 @@ class HomeController extends Controller
             }
 
             // 6. Géneros principales (Top 6)
+            // Géneros principales ordenados por valoración media en los últimos 30 días, con group by completo para PostgreSQL
             $topGenres = Genre::select('genres.*')
                 ->join('books', 'genres.id', '=', 'books.genre_id')
                 ->join('reviews', 'books.isbn', '=', 'reviews.book_isbn')
@@ -112,7 +115,7 @@ class HomeController extends Controller
                         ->on('reviews.user_id', '=', 'book_user.user_id');
                 })
                 ->where('reviews.created_at', '>=', now()->subDays(30))
-                ->groupBy('genres.id')
+                ->groupBy('genres.id', 'genres.name', 'genres.created_at', 'genres.updated_at')
                 ->orderByDesc(DB::raw('AVG(book_user.rating)'))
                 ->take(6)
                 ->get();
@@ -126,28 +129,29 @@ class HomeController extends Controller
 
                 foreach ($topGenres as $genre) {
                     $genre->top_books = Book::where('genre_id', $genre->id)
-                        ->withAvg('users as reviews_avg_rating', 'book_user.rating')
-                        ->orderByDesc('reviews_avg_rating')
+                        ->withAvg('users as average_rating', 'book_user.rating')
+                        ->orderByDesc('average_rating')
                         ->take(5)
                         ->get();
                 }
             } else {
                 foreach ($topGenres as $genre) {
+                    // Libros más valorados de cada género usando una subconsulta correlacionada compatible con PostgreSQL (calcula la valoración global)
                     $genre->top_books = Book::where('genre_id', $genre->id)
                         ->select('books.*')
-                        ->join('book_user', 'books.isbn', '=', 'book_user.book_isbn')
-                        ->join('reviews', function ($join) {
-                            $join->on('book_user.book_isbn', '=', 'reviews.book_isbn')
-                                ->on('book_user.user_id', '=', 'reviews.user_id');
-                        })
-                        ->where('reviews.created_at', '>=', now()->subDays(30))
-                        ->selectRaw('AVG(book_user.rating) as reviews_avg_rating')
-                        ->groupBy('books.isbn')
-                        ->orderByDesc('reviews_avg_rating')
+                        ->addSelect([
+                            'average_rating' => DB::table('book_user')
+                                ->whereColumn('book_user.book_isbn', 'books.isbn')
+                                ->selectRaw('COALESCE(AVG(book_user.rating), 0)')
+                        ])
+                        ->orderByDesc('average_rating')
                         ->take(5)
                         ->get();
                 }
             }
+
+            // Precargar ratingRecord para evitar consultas N+1 en las opiniones destacadas
+            Review::preloadRatingRecords($brutalOpinions);
 
             return compact('latest', 'topRated', 'risingStars', 'featuredLists', 'brutalOpinions', 'topGenres');
         });
