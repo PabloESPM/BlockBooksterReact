@@ -44,9 +44,9 @@ class BookResource extends JsonResource
             ),
 
             'user_review' => $this->relationLoaded('reviews')
-                ? new \App\Http\Resources\ReviewResource($this->reviews->where('user_id', optional($request->user())->id)->first())
+                ? (($review = $this->reviews->where('user_id', optional($request->user())->id)->first()) ? new \App\Http\Resources\ReviewResource($review) : null)
                 : ($request->user()
-                    ? new \App\Http\Resources\ReviewResource(\App\Models\Review::where('user_id', $request->user()->id)->where('book_isbn', $this->isbn)->first())
+                    ? (($review = \App\Models\Review::where('user_id', $request->user()->id)->where('book_isbn', $this->isbn)->first()) ? new \App\Http\Resources\ReviewResource($review) : null)
                     : null),
 
         ];
