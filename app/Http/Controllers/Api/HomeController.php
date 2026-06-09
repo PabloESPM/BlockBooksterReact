@@ -165,6 +165,38 @@ class HomeController extends Controller
             foreach ($homeData['risingStars'] as $author) {
                 $author->is_followed = in_array($author->id, $followedAuthorIds);
             }
+
+            // Recopilar todos los libros mostrados en el home para precargar sus reseñas en una sola consulta
+            $allBooks = collect();
+            $allBooks = $allBooks->concat(collect($homeData['latest'] ?? []));
+            $allBooks = $allBooks->concat(collect($homeData['topRated'] ?? []));
+            if (isset($homeData['topGenres'])) {
+                foreach ($homeData['topGenres'] as $genre) {
+                    if (isset($genre->top_books)) {
+                        $allBooks = $allBooks->concat(collect($genre->top_books));
+                    }
+                }
+            }
+
+            $bookIsbns = $allBooks->pluck('isbn')->unique()->filter()->values()->all();
+
+            if (!empty($bookIsbns)) {
+                // Obtener las reseñas del usuario logueado con sus likes eager-loaded
+                $userReviews = Review::with('likes')
+                    ->where('user_id', $viewer->id)
+                    ->whereIn('book_isbn', $bookIsbns)
+                    ->get()
+                    ->keyBy('book_isbn');
+
+                // Precargar ratingRecord para estas reseñas para evitar N+1 al serializar el rating
+                Review::preloadRatingRecords($userReviews);
+
+                // Asociar las reseñas en memoria a cada libro
+                foreach ($allBooks as $book) {
+                    $review = $userReviews->get($book->isbn);
+                    $book->setRelation('reviews', $review ? collect([$review]) : collect());
+                }
+            }
         }
 
         return response()->json([
